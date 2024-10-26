@@ -381,10 +381,10 @@ const contractABI = [
 	}
 ];
 
-// Dirección del contrato desplegado en Sepolia
-const contractAddress = '0xf8e81D47203A594245E36C48e151709F0C19fBe8'; // Reemplaza con la dirección correcta
+const contractAddress = '0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8'; // Reemplaza con la dirección correcta
 
 
+// Función para obtener parámetros JSON desde la URL
 function getJsonFromUrl() {
     let query = location.search.substr(1);
     let result = {};
@@ -475,12 +475,14 @@ function updateState(state, additionalInfo) {
 
 // Función para conectar MetaMask usando web3.js
 async function connectMetamask() {
+    console.log("Intentando conectar con MetaMask");
     if (window.ethereum) {
         web3 = new Web3(window.ethereum);
         try {
             // Solicitar acceso a las cuentas de MetaMask
             await window.ethereum.request({ method: 'eth_requestAccounts' });
             userAccount = (await web3.eth.getAccounts())[0];
+            console.log("Cuenta conectada:", userAccount);
             accountInfo.textContent = `${userAccount}`;
             connectButton.style.display = 'none';
             signButton.style.display = 'inline-block';
@@ -489,9 +491,10 @@ async function connectMetamask() {
 
             // Inicializar el contrato
             await initContract();
+            console.log("Contrato inicializado");
 
         } catch (error) {
-            console.error("Acceso a la cuenta denegado por el usuario");
+            console.error("Acceso a la cuenta denegado por el usuario", error);
             updateState('error', { message: "Acceso a la cuenta denegado por el usuario." });
         }
     } else {
@@ -502,6 +505,25 @@ async function connectMetamask() {
 // Función para inicializar el contrato inteligente
 async function initContract() {
     contractInstance = new web3.eth.Contract(contractABI, contractAddress);
+}
+
+// Función para esperar el recibo de la transacción
+async function waitForReceipt(txHash, retries = 10, delay = 2000) {
+    return new Promise((resolve, reject) => {
+        (function retryAttempt(attempt) {
+            web3.eth.getTransactionReceipt(txHash, (err, receipt) => {
+                if (err) {
+                    reject(err);
+                } else if (receipt) {
+                    resolve(receipt);
+                } else if (attempt > 0) {
+                    setTimeout(() => retryAttempt(attempt - 1), delay);
+                } else {
+                    reject(new Error('No se pudo obtener el recibo de la transacción después de varios intentos'));
+                }
+            });
+        })(retries);
+    });
 }
 
 // Añadir eventos a los botones
@@ -526,31 +548,45 @@ signButton.addEventListener('click', async () => {
 nextButton.addEventListener('click', async () => {
     if (contractInstance && userAccount) {
         try {
-            const dataString = Object.entries(dataJson).map(([key, value]) => `${key}:${value}`).join(', ');
-            console.log('Intentando guardar el documento con datos:', dataString);
-            let gasEstimate;
-            try {
-                gasEstimate = await contractInstance.methods.saveDocument(dataString).estimateGas({ from: userAccount });
-            } catch (error) {
-                console.error('Error al estimar el gas:', error);
-                updateState('error', { message: 'Error al estimar el gas: ' + error.message });
+            const chainId = await web3.eth.getChainId();
+            if (chainId !== 11155111) { // Sepolia chain ID
+                alert('Por favor, cambia a la red de prueba Sepolia en MetaMask.');
+                updateState('error', { message: 'Red incorrecta. Cambia a la red de prueba Sepolia.' });
                 return;
             }
+            try {
+                const dataString = 'Documento de prueba: Hello World';
+                console.log('Intentando guardar el documento con datos estáticos:', dataString);
+                
+                // Estimación dinámica de gas
+                const gasEstimate = await contractInstance.methods.saveDocument(dataString).estimateGas({ from: userAccount });
 
-            const tx = await contractInstance.methods.saveDocument(dataString).send({ 
-                from: userAccount,
-                gas: gasEstimate
-            });
+                let tx;
+                try {
+                    tx = await contractInstance.methods.saveDocument(dataString).send({ 
+                        from: userAccount,
+                        gas: gasEstimate
+                    });
+                    await waitForReceipt(tx.transactionHash);
+                } catch (sendError) {
+                    console.error('Error al enviar la transacción:', sendError);
+                    updateState('error', { message: `Error al enviar la transacción: ${sendError.message}` });
+                    return;
+                }
 
-            console.log('Documento guardado, recibo de transacción:', tx);
-            updateState('saved', { transactionHash: tx.transactionHash });
+                console.log('Documento guardado, recibo de transacción:', tx);
+                updateState('saved', { transactionHash: tx.transactionHash });
 
-            alert('¡Documento guardado exitosamente en la blockchain!');
-        } catch (error) {
-            console.error('Error al guardar el documento:', error);
-            console.error('Detalles del error:', error.message);
-            updateState('error', { message: `Hubo un error al guardar el documento: ${error.message}` });
-            alert('Hubo un error al guardar el documento.');
+                alert('¡Documento guardado exitosamente en la blockchain!');
+            } catch (error) {
+                console.error('Error al guardar el documento:', error);
+                console.error('Detalles del error:', error.message);
+                updateState('error', { message: `Hubo un error al guardar el documento: ${error.message}` });
+                alert('Hubo un error al guardar el documento.');
+            }
+        } catch (networkError) {
+            console.error("Error al obtener el chain ID:", networkError);
+            updateState('error', { message: "Error al verificar la red." });
         }
     } else {
         alert('Contrato no inicializado o cuenta de usuario no disponible.');
