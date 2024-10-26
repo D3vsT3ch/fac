@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web3 Demo</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Incluir Ethers.js desde jsDelivr -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+
+    <!-- Eliminar o comentar Web3.js si ya no lo usas -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script> -->
+</head>
+<body>
+    <div id="userCointainer">
+        <img src="./images/icon_user.svg" alt="user">
+        <strong>Usuario: </strong> 
+        <div id="accountInfo"></div>
+    </div>
+
+    <div class="container">
+        <img src="./images/logo.svg" alt="logo">
+        <div class="title">
+            Plataforma destructrong
+        </div>
+        <div class="subTitle">
+            firma electrónica
+        </div>
+
+        <div id="containerEnter">
+            <div id="online">
+                <span>En línea</span>
+                <img src="./images/icon_checked.svg" alt="online">
+            </div>
+            <div id="jsonContent">
+            </div>
+            <button id="connectButton">Conectar</button>
+            <button id="signButton" style="display:none;">Firmar</button>
+            <button id="nextButton" style="display:none;">Continuar</button>
+        </div>
+        
+    </div>
+    <!-- Incluir script.js después de Ethers.js -->
+    <script src="script.js"></script>
+</body>
+</html>

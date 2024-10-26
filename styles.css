@@ -1,0 +1,124 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-image: url(./images/background.svg);
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover;
+    overflow: hidden;
+    color: white;
+}
+
+.container {
+    width: 800px;
+    height: 80%;
+    margin-top: calc(20% - 50px) ;
+    border-radius: 30px;
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px;
+    background: rgb(0,19,38);
+    background: linear-gradient(180deg, rgba(0,19,38,0.8) 68%, rgba(0,70,140,0.8) 100%);
+    padding: 20px;
+    padding-left: 120px;
+    padding-right: 120px;
+    box-sizing: border-box;
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+#connectButton, #signButton, #nextButton {
+    padding: 10px 20px;
+    margin: 20px;
+    background-color: #001326;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 22px;
+    width: 193px;
+
+}
+
+#userCointainer{
+    background-color: rgba(0,19,38,0.8);
+    position: absolute;
+    top: 30px;
+    right: 0px;
+    width: auto;
+    height: auto;
+    display: inline-block;
+    padding: 10px;
+    padding-left: 15px;
+    border-top-left-radius: 30px;
+    border-bottom-left-radius: 30px;
+    opacity: 0;
+}
+
+#userCointainer img, #userCointainer strong, #userCointainer div{
+    display: inline-block;
+    vertical-align: middle;
+}
+
+#connectButton:hover, #signButton:hover {
+    background-color: #001326;
+}
+
+#jsonContent {
+    margin: 20px 0;
+    text-align: left;
+    border: 1px solid #A6A7AD;
+    padding: 10px;
+    border-radius: 25px;
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px;
+    color: black;
+    height: 35%;
+    overflow-y: auto;
+    overflow-x:hidden;
+    width: 100%;
+    word-wrap: break-word;
+    word-break: break-word;
+}
+
+#containerEnter{
+    margin: 20px 0;
+    text-align: left;
+    background-color:  #BBBDC4;
+    padding-top: 52px;
+    padding-left: 58px;
+    padding-right: 58px;
+    padding-bottom: 24px;
+    border-radius: 30px;
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px;
+    color: black;
+    text-align: center;
+    height: 100%;
+}
+
+.title{
+    font-size: 48px;
+    font-weight: bold;
+}
+
+.subTitle{
+    font-size: 48px;
+}
+
+#online{
+    display: inline-block;
+    font-size: 30px;
+    font-weight: bold;
+    opacity: 0;
+}
+
+#online img, #online span{
+    display: inline-block;
+    vertical-align: middle;
+}
