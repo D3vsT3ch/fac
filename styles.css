@@ -18,7 +18,7 @@ body {
 .container {
     width: 800px;
     height: 80%;
-    margin-top: calc(20% - 50px) ;
+    margin-top: calc(20% - 50px);
     border-radius: 30px;
     border-bottom-left-radius: 0px;
     border-bottom-right-radius: 0px;
@@ -32,7 +32,7 @@ body {
     text-align: center;
 }
 
-#connectButton, #signButton, #nextButton {
+#connectButton, #actionButton { /* Incluyendo actionButton */
     padding: 10px 20px;
     margin: 20px;
     background-color: #001326;
@@ -42,7 +42,6 @@ body {
     cursor: pointer;
     font-size: 22px;
     width: 193px;
-
 }
 
 #userCointainer{
@@ -65,7 +64,7 @@ body {
     vertical-align: middle;
 }
 
-#connectButton:hover, #signButton:hover {
+#connectButton:hover, #actionButton:hover { /* Incluyendo actionButton */
     background-color: #001326;
 }
 
@@ -121,4 +120,53 @@ body {
 #online img, #online span{
     display: inline-block;
     vertical-align: middle;
+}
+
+/* Estilos para botones deshabilitados */
+button:disabled {
+    background-color: #555;
+    cursor: not-allowed;
+}
+
+/* Estilos para la animación de spinner */
+.spinner {
+    border: 8px solid #f3f3f3; /* Gris claro */
+    border-top: 8px solid #3498db; /* Azul */
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 2s linear infinite;
+    margin: 20px auto; /* Centrar horizontalmente */
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Estilos para el elemento de carga */
+#loading {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+#loading p {
+    color: white;
+    font-size: 20px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+/* Estilos para mensajes de error */
+#errorMessage {
+    color: red;
+    font-weight: bold;
 }

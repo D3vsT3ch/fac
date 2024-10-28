@@ -5,11 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Web3 Demo</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Incluir Ethers.js desde jsDelivr -->
+    <!-- Incluir Web3.js desde jsDelivr -->
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
-
-    <!-- Eliminar o comentar Web3.js si ya no lo usas -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script> -->
 </head>
 <body>
     <div id="userCointainer">
@@ -21,10 +18,10 @@
     <div class="container">
         <img src="./images/logo.svg" alt="logo">
         <div class="title">
-            Plataforma destructrong
+            Plataforma Destructrong
         </div>
         <div class="subTitle">
-            firma electrónica
+            Firma Electrónica
         </div>
 
         <div id="containerEnter">
@@ -33,14 +30,18 @@
                 <img src="./images/icon_checked.svg" alt="online">
             </div>
             <div id="jsonContent">
+                <!-- Aquí se mostrarán los datos y estados -->
             </div>
             <button id="connectButton">Conectar</button>
-            <button id="signButton" style="display:none;">Firmar</button>
-            <button id="nextButton" style="display:none;">Continuar</button>
+            <button id="actionButton" style="display:none;">Firmar</button> <!-- Botón Unificado -->
         </div>
         
+        <!-- Animación de Carga -->
+        <div id="loading" style="display:none;">
+            <!-- El contenido será manejado por JavaScript -->
+        </div>
     </div>
-    <!-- Incluir script.js después de Ethers.js -->
+    <!-- Incluir script.js después de Web3.js -->
     <script src="script.js"></script>
 </body>
 </html>
