@@ -14,6 +14,32 @@ let contractInstance;
 // ABI del contrato (asegúrate de que corresponda al contrato desplegado)
 const contractABI = [
 	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_admin",
+				"type": "address"
+			}
+		],
+		"name": "addAdmin",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_user",
+				"type": "address"
+			}
+		],
+		"name": "addToWhitelist",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
 		"inputs": [],
 		"stateMutability": "nonpayable",
 		"type": "constructor"
@@ -102,6 +128,77 @@ const contractABI = [
 		"type": "event"
 	},
 	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_admin",
+				"type": "address"
+			}
+		],
+		"name": "removeAdmin",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_user",
+				"type": "address"
+			}
+		],
+		"name": "removeFromWhitelist",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_data",
+				"type": "string"
+			}
+		],
+		"name": "saveDocument",
+		"outputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address payable",
+				"name": "_to",
+				"type": "address"
+			}
+		],
+		"name": "sendBalance",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_amount",
+				"type": "uint256"
+			}
+		],
+		"name": "setEstablishedAmount",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
 		"anonymous": false,
 		"inputs": [
 			{
@@ -132,30 +229,8 @@ const contractABI = [
 		"type": "fallback"
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "_admin",
-				"type": "address"
-			}
-		],
-		"name": "addAdmin",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "_user",
-				"type": "address"
-			}
-		],
-		"name": "addToWhitelist",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
+		"stateMutability": "payable",
+		"type": "receive"
 	},
 	{
 		"inputs": [],
@@ -303,86 +378,10 @@ const contractABI = [
 		],
 		"stateMutability": "view",
 		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "_admin",
-				"type": "address"
-			}
-		],
-		"name": "removeAdmin",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "_user",
-				"type": "address"
-			}
-		],
-		"name": "removeFromWhitelist",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "string",
-				"name": "_data",
-				"type": "string"
-			}
-		],
-		"name": "saveDocument",
-		"outputs": [
-			{
-				"internalType": "bytes32",
-				"name": "",
-				"type": "bytes32"
-			}
-		],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address payable",
-				"name": "_to",
-				"type": "address"
-			}
-		],
-		"name": "sendBalance",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "_amount",
-				"type": "uint256"
-			}
-		],
-		"name": "setEstablishedAmount",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"stateMutability": "payable",
-		"type": "receive"
 	}
 ];
 
-const contractAddress = '0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8'; // Reemplaza con la dirección correcta
-
+const contractAddress = '0x00eb3044B01Dc3207Ce2e4214e4A3F9F33857039'; // Reemplaza con la dirección correcta
 
 // Función para obtener parámetros JSON desde la URL
 function getJsonFromUrl() {
@@ -493,6 +492,13 @@ async function connectMetamask() {
             await initContract();
             console.log("Contrato inicializado");
 
+            // Verificar la red actual
+            await verifyNetwork();
+
+            // Escuchar cambios de cuenta o red
+            window.ethereum.on('accountsChanged', handleAccountsChanged);
+            window.ethereum.on('chainChanged', handleChainChanged);
+
         } catch (error) {
             console.error("Acceso a la cuenta denegado por el usuario", error);
             updateState('error', { message: "Acceso a la cuenta denegado por el usuario." });
@@ -526,6 +532,88 @@ async function waitForReceipt(txHash, retries = 10, delay = 2000) {
     });
 }
 
+// Función para verificar si la red actual es Sepolia
+async function verifyNetwork() {
+    try {
+        const chainId = await web3.eth.getChainId();
+        console.log("Chain ID obtenido:", chainId, "Tipo:", typeof chainId);
+        if (Number(chainId) !== 11155111) { // Sepolia chain ID
+            alert('Por favor, cambia a la red de prueba Sepolia en MetaMask.');
+            updateState('error', { message: 'Red incorrecta. Cambia a la red de prueba Sepolia.' });
+            // Intentar cambiar la red automáticamente
+            await switchToSepolia();
+        } else {
+            console.log("Conectado a la red Sepolia.");
+            online.style.opacity = 1;
+        }
+    } catch (error) {
+        console.error("Error al verificar la red:", error);
+        updateState('error', { message: "Error al verificar la red." });
+    }
+}
+
+// Función para cambiar dinámicamente a Sepolia
+async function switchToSepolia() {
+    try {
+        await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0xAA36A7' }], // 11155111 en hexadecimal
+        });
+        console.log("Cambio a Sepolia exitoso.");
+        updateState('notSigned');
+    } catch (switchError) {
+        // Este error indica que Sepolia no está agregado a MetaMask
+        if (switchError.code === 4902) {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [{
+                        chainId: '0xAA36A7',
+                        chainName: 'Sepolia Test Network',
+                        rpcUrls: ['https://sepolia.infura.io/v3/YOUR_INFURA_PROJECT_ID'], // Reemplaza con tu URL RPC si es necesario
+                        nativeCurrency: {
+                            name: 'Sepolia Ether',
+                            symbol: 'ETH',
+                            decimals: 18
+                        },
+                        blockExplorerUrls: ['https://sepolia.etherscan.io']
+                    }],
+                });
+                console.log("Red Sepolia agregada exitosamente.");
+                // Después de agregar, intenta cambiar nuevamente
+                await switchToSepolia();
+            } catch (addError) {
+                console.error("Error al agregar la red Sepolia:", addError);
+                updateState('error', { message: 'No se pudo agregar la red Sepolia a MetaMask.' });
+            }
+        } else {
+            console.error("Error al cambiar a Sepolia:", switchError);
+            updateState('error', { message: 'No se pudo cambiar a la red Sepolia.' });
+        }
+    }
+}
+
+// Manejar cambios de cuenta
+function handleAccountsChanged(accounts) {
+    if (accounts.length === 0) {
+        console.log("Por favor, conecta una cuenta.");
+        updateState('error', { message: "Por favor, conecta una cuenta en MetaMask." });
+    } else {
+        userAccount = accounts[0];
+        accountInfo.textContent = `${userAccount}`;
+        console.log("Cuenta cambiada a:", userAccount);
+        updateState('notSigned');
+    }
+}
+
+// Manejar cambios de red
+async function handleChainChanged(_chainId) {
+    console.log("Chain cambiado a:", _chainId);
+    await verifyNetwork();
+    // Recargar la página para evitar inconsistencias
+    window.location.reload();
+}
+
 // Añadir eventos a los botones
 connectButton.addEventListener('click', connectMetamask);
 
@@ -549,14 +637,27 @@ nextButton.addEventListener('click', async () => {
     if (contractInstance && userAccount) {
         try {
             const chainId = await web3.eth.getChainId();
-            if (chainId !== 11155111) { // Sepolia chain ID
+            console.log("Chain ID obtenido en 'nextButton':", chainId, "Tipo:", typeof chainId);
+            if (Number(chainId) !== 11155111) { // Sepolia chain ID
                 alert('Por favor, cambia a la red de prueba Sepolia en MetaMask.');
                 updateState('error', { message: 'Red incorrecta. Cambia a la red de prueba Sepolia.' });
+                // Intentar cambiar la red automáticamente
+                await switchToSepolia();
                 return;
             }
             try {
-                const dataString = 'Documento de prueba: Hello World';
-                console.log('Intentando guardar el documento con datos estáticos:', dataString);
+                if (!dataJson) {
+                    throw new Error("Datos JSON no disponibles para enviar.");
+                }
+
+                // Convertir el objeto JSON a una cadena y envolverlo con comillas sencillas
+                let dataString = JSON.stringify(dataJson);
+                // Escapar comillas sencillas dentro del string si es necesario
+                dataString = dataString.replace(/'/g, "\\'");
+                // Envolver el string completo con comillas sencillas
+                dataString = `'${dataString}'`;
+
+                console.log('Intentando guardar el documento con datos de la URL:', dataString);
                 
                 // Estimación dinámica de gas
                 const gasEstimate = await contractInstance.methods.saveDocument(dataString).estimateGas({ from: userAccount });
