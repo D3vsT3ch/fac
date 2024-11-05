@@ -1,4 +1,8 @@
-body {
+body{
+    margin: 0px;
+}
+
+#signBody {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
     margin: 0;
@@ -13,6 +17,42 @@ body {
     background-size: cover;
     overflow: hidden;
     color: white;
+}
+
+#containerBody{
+    width: 100%;
+    height: auto;
+    margin: 0px;
+    padding-top: 18px;
+    padding-bottom: 20px;
+    padding-left: 50px;
+    padding-right: 50px;
+    box-sizing: border-box;
+    background-color: #97A2AC;
+}
+
+#headerSection{
+    width: 100%;
+    height: 125px;
+    background-color: #091726;
+    border-radius: 40px;
+    text-align: left;
+}
+
+#bodySection{
+    width: 100%;
+    height: auto;
+    background: rgb(0,19,38);
+    background: linear-gradient(180deg, rgba(0,19,38,0.8) 68%, rgba(0,70,140,0.8) 100%);
+    border-radius: 40px;
+    margin-top: 20px;
+    padding-bottom: 20px;
+}
+
+.logo{
+    display: inline-block;
+    margin-top: 20px;
+    margin-left: 50px;
 }
 
 .container {
@@ -99,6 +139,138 @@ body {
     color: black;
     text-align: center;
     height: 100%;
+}
+
+.titleLabel{
+    font-size: 25px;
+    font-weight: bold;
+    color: white;
+}
+
+.inputText{
+    width: calc(100% - 75px);
+    height: 49px;
+    background-color: #BBBDC4;
+    padding: 10px;
+    box-sizing: border-box;
+    border: none;
+    border-radius: 30px;
+    display: inline-block;
+    vertical-align: top;
+}
+
+.space50{
+    width: 100%;
+    display: block;
+    height: 50px;
+}
+
+.space38{
+    width: 100%;
+    display: block;
+    height: 38px;
+}
+
+.containerInput{
+    width: 100%;
+    margin-top: 13px;
+}
+
+.marginBottom50{
+    margin-bottom: 30px;
+    margin-top: 30px;
+}
+
+.margin33{
+    margin-bottom: 33px;
+    margin-top: 33px;
+}
+
+.margin46{
+    margin-left: 46px;
+    margin-right: 46px;
+}
+
+.gap30{
+    gap: 30px;
+}
+
+#userTable{
+    width: 100%;
+    height: auto;
+    border: none;
+    color: white;
+}
+
+#userTable img{
+    cursor: pointer;
+}
+
+#userTable td:nth-child(odd){
+    padding: 10px;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+
+#userTable td:nth-child(even){
+    padding: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+
+#userTable tr:nth-child(even){
+    background-color: transparent;
+}
+
+#userTable tr:nth-child(even) td:first-child{
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+#userTable tr:nth-child(odd){
+    background-color: #697881;
+}
+
+.toLeft{
+    margin-left: 0px !important;
+    margin-right: 70px;
+}
+
+.iconAction{
+    display: inline-block;
+    margin-left: 14px;
+    cursor: pointer;
+}
+
+.flex{
+    display: flex;
+}
+
+.flexV{
+    flex-direction: column;
+    display: flex;
+}
+
+.flexH{
+    display: flex;
+    flex-direction: row;
+}
+
+.flex1{
+    flex: 1;
+}
+
+.centerText{
+    width: 100%;
+    display: block;
+    text-align: center;
+}
+
+.titleAdmin{
+    font-size: 30px;
+    color: white;
+    font-weight: bold;
+    display: inline-block;
 }
 
 .title{
