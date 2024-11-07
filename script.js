@@ -1,394 +1,27 @@
 document.addEventListener('DOMContentLoaded', () => { // Asegurarse de que el DOM está cargado
 
-    // Elementos del DOM
-    const connectButton = document.getElementById("connectButton");
-    const actionButton = document.getElementById("actionButton"); // Botón Unificado
-    const accountInfo = document.getElementById("accountInfo");
-    const online = document.getElementById("online");
-    const userCointainer = document.getElementById("userCointainer");
-    const jsonContent = document.getElementById("jsonContent");
-    const loading = document.getElementById("loading"); // Elemento de carga
+  // Elementos del DOM
+  const connectButton = document.getElementById("connectButton");
+  const actionButton = document.getElementById("actionButton"); // Botón Unificado
+  const accountInfo = document.getElementById("accountInfo");
+  const online = document.getElementById("online");
+  const userCointainer = document.getElementById("userCointainer");
+  const jsonContent = document.getElementById("jsonContent");
+  const loading = document.getElementById("loading"); // Elemento de carga
 
-    // Variables globales
-    let web3;
-    let userAccount;
-    let contractInstance;
-    let hasSigned = false; // Estado para determinar si el usuario ya firmó
+  // Variables globales
+  let web3;
+  let userAccount;
+  let contractInstance;
+  let hasSigned = false; // Estado para determinar si el usuario ya firmó
 
 // ABI del contrato (asegúrate de que corresponda al contrato desplegado)
-const contractABI = [
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "_admin",
-				"type": "address"
-			}
-		],
-		"name": "addAdmin",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "_user",
-				"type": "address"
-			}
-		],
-		"name": "addToWhitelist",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"stateMutability": "nonpayable",
-		"type": "constructor"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "admin",
-				"type": "address"
-			}
-		],
-		"name": "AdminAdded",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "admin",
-				"type": "address"
-			}
-		],
-		"name": "AdminRemoved",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			}
-		],
-		"name": "AmountEstablished",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "to",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			}
-		],
-		"name": "BalanceSent",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "bytes32",
-				"name": "docHash",
-				"type": "bytes32"
-			},
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "uploader",
-				"type": "address"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "timestamp",
-				"type": "uint256"
-			}
-		],
-		"name": "DocumentSaved",
-		"type": "event"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "_admin",
-				"type": "address"
-			}
-		],
-		"name": "removeAdmin",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "_user",
-				"type": "address"
-			}
-		],
-		"name": "removeFromWhitelist",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "string",
-				"name": "_data",
-				"type": "string"
-			}
-		],
-		"name": "saveDocument",
-		"outputs": [
-			{
-				"internalType": "bytes32",
-				"name": "",
-				"type": "bytes32"
-			}
-		],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address payable",
-				"name": "_to",
-				"type": "address"
-			}
-		],
-		"name": "sendBalance",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "_amount",
-				"type": "uint256"
-			}
-		],
-		"name": "setEstablishedAmount",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "user",
-				"type": "address"
-			}
-		],
-		"name": "UserRemovedFromWhitelist",
-		"type": "event"
-	},
-	{
-		"anonymous": false,
-		"inputs": [
-			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "user",
-				"type": "address"
-			}
-		],
-		"name": "UserWhitelisted",
-		"type": "event"
-	},
-	{
-		"stateMutability": "payable",
-		"type": "fallback"
-	},
-	{
-		"stateMutability": "payable",
-		"type": "receive"
-	},
-	{
-		"inputs": [],
-		"name": "establishedAmount",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getAdmins",
-		"outputs": [
-			{
-				"internalType": "address[]",
-				"name": "",
-				"type": "address[]"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getAllDocuments",
-		"outputs": [
-			{
-				"internalType": "bytes32[]",
-				"name": "",
-				"type": "bytes32[]"
-			},
-			{
-				"internalType": "uint256[]",
-				"name": "",
-				"type": "uint256[]"
-			},
-			{
-				"internalType": "string[]",
-				"name": "",
-				"type": "string[]"
-			},
-			{
-				"internalType": "address[]",
-				"name": "",
-				"type": "address[]"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "bytes32",
-				"name": "_docHash",
-				"type": "bytes32"
-			}
-		],
-		"name": "getDocument",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			},
-			{
-				"internalType": "string",
-				"name": "",
-				"type": "string"
-			},
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "getWhitelistedUsers",
-		"outputs": [
-			{
-				"internalType": "address[]",
-				"name": "",
-				"type": "address[]"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "_user",
-				"type": "address"
-			}
-		],
-		"name": "isAdmin",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "_user",
-				"type": "address"
-			}
-		],
-		"name": "isWhitelisted",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "owner",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	}
-];
 
-const contractAddress = '0x00eb3044B01Dc3207Ce2e4214e4A3F9F33857039'; // Reemplaza con la dirección correcta
 
-    // Función para obtener parámetros JSON desde la URL
-    function getJsonFromUrl() {
+
+
+      // Función para obtener parámetros JSON desde la URL
+	  function getJsonFromUrl() {
         let query = location.search.substr(1);
         let result = {};
         query.split("&").forEach(function(part) {
@@ -428,9 +61,9 @@ const contractAddress = '0x00eb3044B01Dc3207Ce2e4214e4A3F9F33857039'; // Reempla
     if (urlParams.data) {
         dataJson = displayJson(urlParams.data);
     } else {
-		if(jsonContent != null){
-        	jsonContent.textContent = "No se proporcionó JSON en la URL.";
-		}
+        if (jsonContent != null) {
+            jsonContent.textContent = "No se proporcionó JSON en la URL.";
+        }
     }
 
     // Función para actualizar el estado de la aplicación en el DOM
@@ -468,6 +101,7 @@ const contractAddress = '0x00eb3044B01Dc3207Ce2e4214e4A3F9F33857039'; // Reempla
                 hideLoading();
                 jsonContent.innerHTML = `
                     <p><strong>Hash de Transacción:</strong> ${additionalInfo.transactionHash}</p>
+                    <p><strong>Hash del Documento:</strong> ${additionalInfo.docHash}</p>
                     <p><strong>Estado:</strong> DOCUMENTO GUARDADO</p>
                 `;
                 actionButton.style.display = 'none';
@@ -647,106 +281,111 @@ const contractAddress = '0x00eb3044B01Dc3207Ce2e4214e4A3F9F33857039'; // Reempla
         }
     }
 
-    
-	if(connectButton != null){
-		connectButton.addEventListener('click', connectMetamask);
+    if (connectButton != null) {
+        connectButton.addEventListener('click', connectMetamask);
 
-		actionButton.addEventListener('click', async () => {
-			if (web3 && userAccount) {
-				if (!hasSigned) {
-					// Proceso de firma
-					try {
-						// Verificar si el usuario está en la whitelist
-						const whitelisted = await isUserWhitelisted();
-						if (!whitelisted) {
-							throw new Error("Tu cuenta no está en la lista blanca. Contacta al administrador.");
-						}
+        actionButton.addEventListener('click', async () => {
+            if (web3 && userAccount) {
+                if (!hasSigned) {
+                    // Proceso de firma
+                    try {
+                        // Verificar si el usuario está en la whitelist
+                        const whitelisted = await isUserWhitelisted();
+                        if (!whitelisted) {
+                            throw new Error("Tu cuenta no está en la lista blanca. Contacta al administrador.");
+                        }
 
-						// Mostrar los datos a enviar antes de firmar
-						jsonContent.innerHTML = `
-							<p><strong>Datos a Enviar:</strong></p>
-							<pre>${JSON.stringify(dataJson, null, 2)}</pre>
-							<p><strong>Estado:</strong> FIRMANDO...</p>
-						`;
+                        // Mostrar los datos a enviar antes de firmar
+                        jsonContent.innerHTML = `
+                            <p><strong>Datos a Enviar:</strong></p>
+                            <pre>${JSON.stringify(dataJson, null, 2)}</pre>
+                            <p><strong>Estado:</strong> FIRMANDO...</p>
+                        `;
 
-						// Actualizar el estado a 'signing' para reflejar que se está firmando
-						updateState('signing');
+                        // Actualizar el estado a 'signing' para reflejar que se está firmando
+                        updateState('signing');
 
-						// Generar un mensaje único para firmar (incluyendo un nonce)
-						const nonce = Math.floor(Math.random() * 1000000);
-						const message = `Confirmar conexión - Nonce: ${nonce}`;
-						const signature = await web3.eth.personal.sign(message, userAccount, '');
-						console.log("Firma obtenida:", signature);
+                        // Generar un mensaje único para firmar (incluyendo un nonce)
+                        const nonce = Math.floor(Math.random() * 1000000);
+                        const message = `Confirmar conexión - Nonce: ${nonce}`;
+                        const signature = await web3.eth.personal.sign(message, userAccount, '');
+                        console.log("Firma obtenida:", signature);
 
-						// Actualizar el estado a 'signed' sin mostrar el hash de la firma
-						updateState('signed');
+                        // Actualizar el estado a 'signed' sin mostrar el hash de la firma
+                        updateState('signed');
 
-					} catch (error) {
-						console.error("Error en la firma", error);
-						updateState('error', { message: error.message });
-					}
-				} else {
-					// Proceso de confirmación y envío
-					try {
-						const chainId = await web3.eth.getChainId();
-						console.log("Chain ID obtenido en 'Confirmar':", chainId, "Tipo:", typeof chainId);
-						if (Number(chainId) !== 11155111) { // Sepolia chain ID
-							alert('Por favor, cambia a la red de prueba Sepolia en MetaMask.');
-							updateState('error', { message: 'Red incorrecta. Cambia a la red de prueba Sepolia.' });
-							// Intentar cambiar la red automáticamente
-							await switchToSepolia();
-							return;
-						}
-						try {
-							if (!dataJson) {
-								throw new Error("Datos JSON no disponibles para enviar.");
-							}
+                    } catch (error) {
+                        console.error("Error en la firma", error);
+                        updateState('error', { message: error.message });
+                    }
+                } else {
+                    // Proceso de confirmación y envío
+                    try {
+                        const chainId = await web3.eth.getChainId();
+                        console.log("Chain ID obtenido en 'Confirmar':", chainId, "Tipo:", typeof chainId);
+                        if (Number(chainId) !== 11155111) { // Sepolia chain ID
+                            alert('Por favor, cambia a la red de prueba Sepolia en MetaMask.');
+                            updateState('error', { message: 'Red incorrecta. Cambia a la red de prueba Sepolia.' });
+                            // Intentar cambiar la red automáticamente
+                            await switchToSepolia();
+                            return;
+                        }
+                        try {
+                            if (!dataJson) {
+                                throw new Error("Datos JSON no disponibles para enviar.");
+                            }
 
-							// Convertir el objeto JSON a una cadena sin comillas adicionales
-							let dataString = JSON.stringify(dataJson);
+                            // Convertir el objeto JSON a una cadena sin comillas adicionales
+                            let dataString = JSON.stringify(dataJson);
 
-							console.log('Intentando guardar el documento con datos de la URL:', dataString);
+                            console.log('Intentando guardar el documento con datos de la URL:', dataString);
 
-							// Estimación dinámica de gas
-							const gasEstimate = await contractInstance.methods.saveDocument(dataString).estimateGas({ from: userAccount });
+                            // Estimación dinámica de gas
+                            const gasEstimate = await contractInstance.methods.saveDocument(dataString).estimateGas({ from: userAccount });
 
-							// Actualizar el estado a 'saving' para reflejar que se está guardando
-							updateState('saving');
+                            // Actualizar el estado a 'saving' para reflejar que se está guardando
+                            updateState('saving');
 
-							// Enviar la transacción
-							let tx;
-							try {
-								tx = await contractInstance.methods.saveDocument(dataString).send({ 
-									from: userAccount,
-									gas: gasEstimate
-								});
+                            // Enviar la transacción
+                            let tx;
+                            try {
+                                tx = await contractInstance.methods.saveDocument(dataString).send({ 
+                                    from: userAccount,
+                                    gas: gasEstimate
+                                });
 
-								// Esperar la confirmación de la transacción
-								await waitForReceipt(tx.transactionHash);
+                                // Esperar la confirmación de la transacción
+                                await waitForReceipt(tx.transactionHash);
 
-							} catch (sendError) {
-								console.error('Error al enviar la transacción:', sendError);
-								updateState('error', { message: `Error al enviar la transacción: ${sendError.message}` });
-								return;
-							}
+                                console.log('Documento guardado, recibo de transacción:', tx);
 
-							console.log('Documento guardado, recibo de transacción:', tx);
-							updateState('saved', { transactionHash: tx.transactionHash });
+                                // Obtener el docHash del evento
+                                const docHash = tx.events.DocumentSaved.returnValues.docHash;
+                                console.log('Hash del documento guardado:', docHash);
 
-						} catch (error) {
-							console.error('Error al guardar el documento:', error);
-							console.error('Detalles del error:', error.message);
-							updateState('error', { message: `Hubo un error al guardar el documento: ${error.message}` });
-						}
-					} catch (networkError) {
-						console.error("Error al obtener el chain ID:", networkError);
-						updateState('error', { message: "Error al verificar la red." });
-					}
-				}
-			} else {
-				alert('Contrato no inicializado o cuenta de usuario no disponible.');
-				updateState('error', { message: "Contrato no inicializado o cuenta de usuario no disponible." });
-			}
-		});
-	}
+                                // Actualizar el estado y mostrar el hash
+                                updateState('saved', { transactionHash: tx.transactionHash, docHash: docHash });
+
+                            } catch (sendError) {
+                                console.error('Error al enviar la transacción:', sendError);
+                                updateState('error', { message: `Error al enviar la transacción: ${sendError.message}` });
+                                return;
+                            }
+
+                        } catch (error) {
+                            console.error('Error al guardar el documento:', error);
+                            console.error('Detalles del error:', error.message);
+                            updateState('error', { message: `Hubo un error al guardar el documento: ${error.message}` });
+                        }
+                    } catch (networkError) {
+                        console.error("Error al obtener el chain ID:", networkError);
+                        updateState('error', { message: "Error al verificar la red." });
+                    }
+                }
+            } else {
+                alert('Contrato no inicializado o cuenta de usuario no disponible.');
+                updateState('error', { message: "Contrato no inicializado o cuenta de usuario no disponible." });
+            }
+        });
+    }
 });
