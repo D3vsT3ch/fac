@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
    // Elements from the DOM
    const connectButton = document.getElementById('connectButton');
    const accountInfo = document.getElementById('accountInfo');
-   const userContainer = document.getElementById('userContainer'); // Corrected ID
+   const userContainer = document.getElementById('userCointainer'); // Corrected ID
    const fieldsToHide = document.querySelectorAll('.hideOnLoad'); // Elements to hide on load
    const loading = document.getElementById('loading'); // Optional loading element
    const adminTable = document.getElementById('adminTable'); // Admin table
@@ -17,9 +17,9 @@ document.addEventListener('DOMContentLoaded', () => {
    // On page load, hide certain elements
    function initializePage() {
        fieldsToHide.forEach(element => {
-           element.style.display = 'none';
+           element.style.opacity = '0';
        });
-       userContainer.style.display = 'none';
+       userContainer.style.opacity = '0';
    }
     initializePage();
 
@@ -35,8 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // Mostrar la cuenta en el contenedor
                 accountInfo.textContent = `${userAccount}`;
-                userContainer.style.display = 'block'; // Mostrar el contenedor
-                connectButton.style.display = 'none'; // Ocultar el botón de conectar
+                userContainer.style.opacity = '1'; // Mostrar el contenedor
+                connectButton.style.opacity = '0'; // Ocultar el botón de conectar
 
                 // Inicializar el contrato
                 await initContract();
