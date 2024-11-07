@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Botón de enviar monto (no se muestra si es el usuario conectado o el owner)
             if (lowerUserAddress !== lowerConnectedAddress && lowerUserAddress !== lowerOwnerAddress) {
                 const sendAmountIcon = document.createElement('img');
-                sendAmountIcon.src = '../images/icon_send_amount.svg';
+                sendAmountIcon.src = '../images/icon_symbol_money.svg';
                 sendAmountIcon.style.cursor = 'pointer';
                 sendAmountIcon.title = 'Enviar monto establecido';
                 sendAmountIcon.onclick = () => sendAmountToUser(user.address);
@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Toggle admin (el owner no puede ser modificado)
             if (lowerUserAddress !== lowerOwnerAddress) {
                 const adminToggleIcon = document.createElement('img');
-                adminToggleIcon.src = user.isAdmin ? '../images/icon_remove_admin.svg' : '../images/icon_add_admin.svg';
+                adminToggleIcon.src = user.isAdmin ? '../images/icon_remove_admin.svg' : '../images/icon_group_users.svg';
                 adminToggleIcon.style.cursor = 'pointer';
                 adminToggleIcon.title = user.isAdmin ? 'Revocar rol de administrador' : 'Conceder rol de administrador';
                 adminToggleIcon.onclick = () => toggleAdmin(user.address, !user.isAdmin);
