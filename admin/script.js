@@ -36,7 +36,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Mostrar la cuenta en el contenedor
                 accountInfo.textContent = `${userAccount}`;
                 userContainer.style.opacity = '1'; // Mostrar el contenedor
-                connectButton.style.opacity = '0'; // Ocultar el botón de conectar
+                connectButton.style.display = 'none'; // Ocultar el botón de conectar
+                $('#bodySection').removeClass('hideOnLoad')
+                $('#bodySection').css('opacity', '1')
 
                 // Inicializar el contrato
                 await initContract();
