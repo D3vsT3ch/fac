@@ -31,19 +31,7 @@
             <div class="space50"></div>
             <div class="centerText marginBottom50">
                 <div class="titleAdmin">
-                    Gestión de Usuarios y Roles
-                </div>
-            </div>
-
-            <!-- Tabla de Usuarios -->
-            <div class="flexH gap30 margin46">
-                <div class="flex1">
-                    <div class="centerText margin33">
-                        <div class="titleLabel">Usuarios</div>
-                    </div>
-                    <table id="userTable" cellspacing="0">
-                        <!-- Las filas de usuarios se llenarán dinámicamente -->
-                    </table>
+                    Gestión de cuentas en la whitelist
                 </div>
             </div>
 
@@ -56,29 +44,86 @@
                         <img id="addAccountButton" class="iconAction" src="../images/icon_more.svg" />
                     </div>
                 </div>
-            </div>
 
-            <!-- Gestión del Monto Establecido -->
-            <div class="centerText marginBottom50">
-                <div class="titleAdmin">
-                    Monto Establecido
-                </div>
-            </div>
-
-            <div class="flexH gap30 margin46">
                 <div class="flex1">
-                    <label class="titleLabel">Monto Establecido (ETH)</label>
-                    <div class="containerInput">
-                        <input id="establishedAmount" class="inputText" type="text" readonly />
-                        <img id="refreshAmountButton" class="iconAction" src="../images/icon_refresh.svg" />
-                    </div>
-                </div>
-                <div class="flex1">
-                    <label for="sendAmount" class="titleLabel">Establecer nuevo monto (ETH)</label>
+                    <label for="sendAmount" class="titleLabel">Monto establecido</label>
                     <div class="containerInput">
                         <input id="sendAmount" class="inputText" type="text" />
                         <img id="setAmountButton" class="iconAction" src="../images/icon_edit_amount.svg" />
                     </div>
+                </div>
+            </div>
+
+            <!-- Tabla de Usuarios -->
+            <div class="flexH gap30 margin46">
+                <div class="flex1">
+                    <div class="centerText margin33">
+                        <div class="titleLabel">Usuarios</div>
+                    </div>
+                    <table id="userTable" cellspacing="0">
+                        <!-- Las filas de usuarios se llenarán dinámicamente -->
+                        <tr>
+                            <td align="center">
+                                <strong>Cuenta</strong>
+                            </td>
+
+                            <td align="center">
+                                <strong>Rol</strong>
+                            </td>
+
+                            <td align="center">
+                                <strong>Acciones</strong>
+                            </td>
+                        </tr>
+
+                            <tr>
+                                <td>
+                                    0x20d9edCaE3fF88178C76ffdA33b8959DAa960c33
+                                </td>
+
+                                <td>
+                                    usuario
+                                </td>
+    
+                                <td>
+                                    <img src="../images/icon_symbol_money.svg" />
+                                    <img src="../images/icon_group_users.svg" />
+                                    <img src="../images/icon_delete.svg" />
+                                </td>
+                            </tr>
+    
+                            <tr>
+                                <td>
+                                    0x20d9edCaE3fF88178C76ffdA33b8959DAa960c33
+                                </td>
+
+                                <td>
+                                    Administrador
+                                </td>
+    
+                                <td>
+                                    <img src="../images/icon_symbol_money.svg" />
+                                    <img src="../images/icon_group_users.svg" />
+                                    <img src="../images/icon_delete.svg" />
+                                </td>
+                            </tr>
+    
+                            <tr>
+                                <td>
+                                    0x20d9edCaE3fF88178C76ffdA33b8959DAa960c33
+                                </td>
+
+                                <td>
+                                    usuario
+                                </td>
+    
+                                <td>
+                                    <img src="../images/icon_symbol_money.svg" />
+                                    <img src="../images/icon_group_users.svg" />
+                                    <img src="../images/icon_delete.svg" />
+                                </td>
+                            </tr>
+                    </table>
                 </div>
             </div>
         </div>

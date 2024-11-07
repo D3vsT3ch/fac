@@ -303,10 +303,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Evento para refrescar el monto establecido
-    refreshAmountButton.addEventListener('click', async () => {
-        await loadEstablishedAmount();
-        alert('Monto establecido actualizado.');
-    });
+    if(refreshAmountButton != null){
+        refreshAmountButton.addEventListener('click', async () => {
+            await loadEstablishedAmount();
+            alert('Monto establecido actualizado.');
+        });
+    }
+    
 
     // Evento para establecer un nuevo monto
     // Evento para establecer un nuevo monto

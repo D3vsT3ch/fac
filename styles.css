@@ -206,28 +206,28 @@ body{
     cursor: pointer;
 }
 
-#userTable td:nth-child(odd){
+#userTable td:nth-child(1){
     padding: 10px;
     border-top-left-radius: 10px;
     border-bottom-left-radius: 10px;
 }
 
-#userTable td:nth-child(even){
+#userTable td:nth-child(3){
     padding: 10px;
     border-top-right-radius: 10px;
     border-bottom-right-radius: 10px;
 }
 
-#userTable tr:nth-child(even){
+#userTable tr:nth-child(odd){
     background-color: transparent;
 }
 
-#userTable tr:nth-child(even) td:first-child{
+#userTable tr:nth-child(odd) td:first-child{
     padding-top: 20px;
     padding-bottom: 20px;
 }
 
-#userTable tr:nth-child(odd){
+#userTable tr:nth-child(even){
     background-color: #697881;
 }
 
