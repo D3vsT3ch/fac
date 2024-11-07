@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const userTable = document.getElementById('userTable');
     const bodySection = document.getElementById('bodySection');
 
+    const depositAmountInput = document.getElementById('depositAmount');
+    const depositButton = document.getElementById('depositButton');
+
     // Elementos para la gestión del monto
     const establishedAmountInput = document.getElementById('establishedAmount');
     const refreshAmountButton = document.getElementById('refreshAmountButton');
@@ -29,6 +32,30 @@ document.addEventListener('DOMContentLoaded', () => {
         userContainer.style.display = 'none';
     }
     initializePage();
+
+      // Evento para depositar Ether
+      depositButton.addEventListener('click', async () => {
+        const amount = depositAmountInput.value.trim();
+        if (!isNaN(amount) && amount > 0) {
+            try {
+                // Convertir Ether a Wei
+                const amountWei = web3.utils.toWei(amount, 'ether');
+                // Llamar a la función deposit con el valor especificado
+                await contractInstance.methods.deposit().send({
+                    from: userAccount,
+                    value: amountWei
+                });
+                alert('Deposito exitoso.');
+                depositAmountInput.value = '';
+                await loadEstablishedAmount(); // Opcional: actualizar el monto establecido si es necesario
+            } catch (error) {
+                console.error('Error al depositar Ether:', error);
+                alert('Error al depositar Ether: ' + error.message);
+            }
+        } else {
+            alert('Por favor, ingresa una cantidad válida de Ether.');
+        }
+    });
 
     // Función para conectar con MetaMask
     async function connectMetamask() {
@@ -309,7 +336,6 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Monto establecido actualizado.');
         });
     }
-    
 
     // Evento para establecer un nuevo monto
     // Evento para establecer un nuevo monto
