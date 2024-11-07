@@ -27,7 +27,7 @@ const contractABI = [
 	},
 	{
 		"inputs": [],
-		"stateMutability": "nonpayable",
+		"stateMutability": "payable",
 		"type": "constructor"
 	},
 	{
@@ -87,6 +87,13 @@ const contractABI = [
 		],
 		"name": "BalanceSent",
 		"type": "event"
+	},
+	{
+		"inputs": [],
+		"name": "deposit",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
 	},
 	{
 		"anonymous": false,
@@ -273,6 +280,19 @@ const contractABI = [
 		"type": "function"
 	},
 	{
+		"inputs": [],
+		"name": "getContractBalance",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"inputs": [
 			{
 				"internalType": "bytes32",
@@ -365,9 +385,9 @@ const contractABI = [
 		"stateMutability": "view",
 		"type": "function"
 	}
-];
+]
 
-const contractAddress = '0x2Ad7ecbbC65eF61939ecFd8751a9589699eD5082'; // Reemplaza con la dirección correcta
+const contractAddress = '0x26cD354D644d452c128E34AEe0c95B581F1B3707'; // Reemplaza con la dirección correcta
 
 document.addEventListener('DOMContentLoaded', () => {
 
