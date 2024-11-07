@@ -186,16 +186,16 @@ document.addEventListener('DOMContentLoaded', () => {
             rolesContainer.classList.add('rolesContainer');
 
             if (user.isWhitelisted) {
-                const whitelistIcon = document.createElement('img');
-                whitelistIcon.src = '../images/icon_whitelist.svg';
-                whitelistIcon.title = 'En whitelist';
+                const whitelistIcon = document.createElement('div');
+                whitelistIcon.className = 'tag'
+                whitelistIcon.innerHTML = "Usuario"
                 rolesContainer.appendChild(whitelistIcon);
             }
 
             if (user.isAdmin) {
-                const adminIcon = document.createElement('img');
-                adminIcon.src = '../images/icon_admin.svg';
-                adminIcon.title = 'Administrador';
+                const adminIcon = document.createElement('div');
+                adminIcon.className = 'tag'
+                adminIcon.innerHTML = "Administrador"
                 rolesContainer.appendChild(adminIcon);
             }
 
@@ -220,14 +220,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Toggle whitelist (el owner no puede ser modificado)
-            if (lowerUserAddress !== lowerOwnerAddress) {
+            /*if (lowerUserAddress !== lowerOwnerAddress) {
                 const whitelistToggleIcon = document.createElement('img');
                 whitelistToggleIcon.src = user.isWhitelisted ? '../images/icon_remove_whitelist.svg' : '../images/icon_add_whitelist.svg';
                 whitelistToggleIcon.style.cursor = 'pointer';
                 whitelistToggleIcon.title = user.isWhitelisted ? 'Remover de whitelist' : 'Agregar a whitelist';
                 whitelistToggleIcon.onclick = () => toggleWhitelist(user.address, !user.isWhitelisted);
                 actionsContainer.appendChild(whitelistToggleIcon);
-            }
+            }*/
 
             // Toggle admin (el owner no puede ser modificado)
             if (lowerUserAddress !== lowerOwnerAddress) {
