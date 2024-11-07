@@ -1,20 +1,27 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // Elements from the DOM
+    // Elementos del DOM
     const connectButton = document.getElementById('connectButton');
     const accountInfo = document.getElementById('accountInfo');
-    const userContainer = document.getElementById('userCointainer'); // ID corregido
-    const fieldsToHide = document.querySelectorAll('.hideOnLoad'); // Elements to hide on load
-    const adminTable = document.getElementById('adminTable'); // Admin table
-    const userTable = document.getElementById('userTable'); // User table
+    const userContainer = document.getElementById('userCointainer');
+    const fieldsToHide = document.querySelectorAll('.hideOnLoad');
+    const userTable = document.getElementById('userTable');
     const bodySection = document.getElementById('bodySection');
+
+    // Elementos para la gestión del monto
+    const establishedAmountInput = document.getElementById('establishedAmount');
+    const refreshAmountButton = document.getElementById('refreshAmountButton');
+    const setAmountButton = document.getElementById('setAmountButton');
+    const sendAmountInput = document.getElementById('sendAmount');
 
     // Variables
     let web3;
     let userAccount;
     let contractInstance;
+    let isUserAdmin = false;
+    let ownerAccount;
 
-    // On page load, hide certain elements
+    // Al cargar la página, ocultamos ciertos elementos
     function initializePage() {
         fieldsToHide.forEach(element => {
             element.style.display = 'none';
@@ -23,58 +30,57 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     initializePage();
 
-    // Function to connect to MetaMask
+    // Función para conectar con MetaMask
     async function connectMetamask() {
         if (window.ethereum) {
             web3 = new Web3(window.ethereum);
             try {
-                // Solicitar acceso a las cuentas de MetaMask
+                // Solicitar acceso a la cuenta
                 await window.ethereum.request({ method: 'eth_requestAccounts' });
                 userAccount = (await web3.eth.getAccounts())[0];
                 console.log("Cuenta conectada:", userAccount);
 
-                // Mostrar la cuenta en el contenedor
+                // Mostrar información de la cuenta
                 accountInfo.textContent = `${userAccount}`;
                 userContainer.style.display = 'block';
-                userContainer.style.opacity="1" // Mostrar el contenedor
-                connectButton.style.display = 'none'; // Ocultar el botón de conectar
+                userContainer.style.opacity = '1';
+                connectButton.style.display = 'none';
+                
 
                 // Inicializar el contrato
                 await initContract();
 
-                // Verificar la red actual (opcional)
+                // Verificar la red
                 await verifyNetwork();
 
-                // Verificar si el usuario es administrador o propietario
+                // Verificar el rol del usuario
                 await checkUserRole();
 
-                // Cargar datos iniciales (opcional)
+                // Cargar datos iniciales
                 await loadInitialData();
 
-                // Escuchar cambios de cuenta o red
+                // Escuchar cambios de cuenta y red
                 window.ethereum.on('accountsChanged', handleAccountsChanged);
                 window.ethereum.on('chainChanged', handleChainChanged);
 
             } catch (error) {
                 console.error("Error al conectar con MetaMask", error);
                 if (error.code === 4001) {
-                    // Usuario rechazó la solicitud
                     alert("Acceso a MetaMask denegado por el usuario.");
                 } else {
                     alert("Error al conectar con MetaMask: " + error.message);
                 }
             }
         } else {
-            alert("MetaMask no está instalado. ¡Instálalo para continuar!");
+            alert("MetaMask no está instalado. Por favor, instálalo para continuar.");
         }
     }
 
-   
-    // Check if user is admin or owner
+    // Verificar si el usuario es administrador o propietario
     async function checkUserRole() {
-        const owner = await contractInstance.methods.owner().call();
+        ownerAccount = await contractInstance.methods.owner().call();
         const isAdmin = await contractInstance.methods.isAdmin(userAccount).call();
-        if (userAccount.toLowerCase() === owner.toLowerCase() || isAdmin) {
+        if (userAccount.toLowerCase() === ownerAccount.toLowerCase() || isAdmin) {
             isUserAdmin = true;
             // Mostrar el contenido principal
             fieldsToHide.forEach(element => {
@@ -82,218 +88,275 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } else {
             alert('No tienes permisos para acceder a esta página.');
-            // Puedes redirigir al usuario o ocultar ciertas secciones
         }
     }
 
-    // Function to load initial data
+    // Función para cargar datos iniciales
     async function loadInitialData() {
         try {
-            // Load admins
+            // Cargar administradores y usuarios
             const admins = await contractInstance.methods.getAdmins().call();
-            populateTable(adminTable, admins);
-
-            // Load whitelisted users
             const users = await contractInstance.methods.getWhitelistedUsers().call();
-            populateTable(userTable, users);
+
+            // Combinar usuarios y roles
+            const combinedData = {};
+            users.forEach(address => {
+                combinedData[address.toLowerCase()] = { isWhitelisted: true, isAdmin: false };
+            });
+            admins.forEach(address => {
+                const lowerAddress = address.toLowerCase();
+                if (combinedData[lowerAddress]) {
+                    combinedData[lowerAddress].isAdmin = true;
+                } else {
+                    combinedData[lowerAddress] = { isWhitelisted: false, isAdmin: true };
+                }
+            });
+
+            // Convertir combinedData a un array
+            const userList = Object.keys(combinedData).map(address => ({
+                address,
+                ...combinedData[address]
+            }));
+
+            // Poblar la tabla
+            populateTable(userTable, userList);
+
+            // Cargar el monto establecido
+            await loadEstablishedAmount();
 
         } catch (error) {
             console.error('Error al cargar datos iniciales', error);
         }
     }
 
-    // Function to populate a table with addresses
-    function populateTable(tableElement, addressArray) {
-        // Clear existing rows
+    // Función para cargar el monto establecido
+    async function loadEstablishedAmount() {
+        try {
+            const amountWei = await contractInstance.methods.establishedAmount().call();
+            const amountEther = web3.utils.fromWei(amountWei, 'ether');
+            establishedAmountInput.value = amountEther;
+        } catch (error) {
+            console.error('Error al cargar el monto establecido', error);
+        }
+    }
+
+    // Función para poblar la tabla de usuarios
+    function populateTable(tableElement, userList) {
+        // Limpiar filas existentes
         tableElement.innerHTML = '';
 
-        addressArray.forEach(address => {
+        userList.forEach(user => {
             const row = tableElement.insertRow();
             const cellAddress = row.insertCell(0);
-            const cellAction = row.insertCell(1);
+            const cellRoles = row.insertCell(1);
+            const cellActions = row.insertCell(2);
 
-            cellAddress.textContent = address;
-            // Add an action button or icon if needed
-            const deleteIcon = document.createElement('img');
-            deleteIcon.src = '../images/icon_delete.svg';
-            deleteIcon.style.cursor = 'pointer';
-            deleteIcon.onclick = () => removeAddress(address, tableElement.id);
-            cellAction.appendChild(deleteIcon);
+            // Dirección
+            cellAddress.textContent = user.address;
+
+            // Iconos de roles
+            const rolesContainer = document.createElement('div');
+            rolesContainer.classList.add('rolesContainer');
+
+            if (user.isWhitelisted) {
+                const whitelistIcon = document.createElement('img');
+                whitelistIcon.src = '../images/icon_whitelist.svg';
+                whitelistIcon.title = 'En whitelist';
+                rolesContainer.appendChild(whitelistIcon);
+            }
+
+            if (user.isAdmin) {
+                const adminIcon = document.createElement('img');
+                adminIcon.src = '../images/icon_admin.svg';
+                adminIcon.title = 'Administrador';
+                rolesContainer.appendChild(adminIcon);
+            }
+
+            cellRoles.appendChild(rolesContainer);
+
+            // Iconos de acciones
+            const actionsContainer = document.createElement('div');
+            actionsContainer.classList.add('actionsContainer');
+
+            const lowerUserAddress = user.address.toLowerCase();
+            const lowerOwnerAddress = ownerAccount.toLowerCase();
+            const lowerConnectedAddress = userAccount.toLowerCase();
+
+            // Botón de enviar monto (no se muestra si es el usuario conectado o el owner)
+            if (lowerUserAddress !== lowerConnectedAddress && lowerUserAddress !== lowerOwnerAddress) {
+                const sendAmountIcon = document.createElement('img');
+                sendAmountIcon.src = '../images/icon_send_amount.svg';
+                sendAmountIcon.style.cursor = 'pointer';
+                sendAmountIcon.title = 'Enviar monto establecido';
+                sendAmountIcon.onclick = () => sendAmountToUser(user.address);
+                actionsContainer.appendChild(sendAmountIcon);
+            }
+
+            // Toggle whitelist (el owner no puede ser modificado)
+            if (lowerUserAddress !== lowerOwnerAddress) {
+                const whitelistToggleIcon = document.createElement('img');
+                whitelistToggleIcon.src = user.isWhitelisted ? '../images/icon_remove_whitelist.svg' : '../images/icon_add_whitelist.svg';
+                whitelistToggleIcon.style.cursor = 'pointer';
+                whitelistToggleIcon.title = user.isWhitelisted ? 'Remover de whitelist' : 'Agregar a whitelist';
+                whitelistToggleIcon.onclick = () => toggleWhitelist(user.address, !user.isWhitelisted);
+                actionsContainer.appendChild(whitelistToggleIcon);
+            }
+
+            // Toggle admin (el owner no puede ser modificado)
+            if (lowerUserAddress !== lowerOwnerAddress) {
+                const adminToggleIcon = document.createElement('img');
+                adminToggleIcon.src = user.isAdmin ? '../images/icon_remove_admin.svg' : '../images/icon_add_admin.svg';
+                adminToggleIcon.style.cursor = 'pointer';
+                adminToggleIcon.title = user.isAdmin ? 'Revocar rol de administrador' : 'Conceder rol de administrador';
+                adminToggleIcon.onclick = () => toggleAdmin(user.address, !user.isAdmin);
+                actionsContainer.appendChild(adminToggleIcon);
+            }
+
+            // Eliminar usuario (el owner no puede ser eliminado)
+            if (lowerUserAddress !== lowerOwnerAddress) {
+                const deleteIcon = document.createElement('img');
+                deleteIcon.src = '../images/icon_delete.svg';
+                deleteIcon.style.cursor = 'pointer';
+                deleteIcon.title = 'Eliminar usuario';
+                deleteIcon.onclick = () => deleteUser(user.address);
+                actionsContainer.appendChild(deleteIcon);
+            }
+
+            cellActions.appendChild(actionsContainer);
         });
     }
 
-    // Function to remove an address
-    function removeAddress(address, tableId) {
-        if (tableId === 'userTable') {
-            // Remover usuario de la whitelist
-            removeFromWhitelist(address);
-        } else if (tableId === 'adminTable') {
-            // Remover administrador
-            removeAdmin(address);
+    // Función para enviar el monto establecido al usuario
+    async function sendAmountToUser(address) {
+        try {
+            await contractInstance.methods.sendBalance(address).send({ from: userAccount });
+            alert('Monto enviado exitosamente.');
+        } catch (error) {
+            console.error('Error al enviar el monto:', error);
+            alert('Error: ' + error.message);
         }
     }
 
-    // Remover usuario de la whitelist
-    async function removeFromWhitelist(address) {
+    // Función para alternar el estado en whitelist
+    async function toggleWhitelist(address, add) {
+        try {
+            if (add) {
+                await contractInstance.methods.addToWhitelist(address).send({ from: userAccount });
+                alert('Usuario agregado a whitelist.');
+            } else {
+                await contractInstance.methods.removeFromWhitelist(address).send({ from: userAccount });
+                alert('Usuario removido de whitelist.');
+            }
+            loadInitialData();
+        } catch (error) {
+            console.error('Error al modificar whitelist:', error);
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // Función para alternar el rol de administrador
+    async function toggleAdmin(address, add) {
+        try {
+            if (add) {
+                await contractInstance.methods.addAdmin(address).send({ from: userAccount });
+                alert('Rol de administrador concedido.');
+            } else {
+                await contractInstance.methods.removeAdmin(address).send({ from: userAccount });
+                alert('Rol de administrador revocado.');
+            }
+            loadInitialData();
+        } catch (error) {
+            console.error('Error al modificar rol de administrador:', error);
+            alert('Error: ' + error.message);
+        }
+    }
+
+    // Función para eliminar un usuario (remover de ambos roles)
+    async function deleteUser(address) {
         try {
             await contractInstance.methods.removeFromWhitelist(address).send({ from: userAccount });
-            alert('Cuenta removida de la whitelist exitosamente.');
-            loadInitialData();
-        } catch (error) {
-            console.error('Error al remover cuenta de la whitelist:', error);
-            alert('Error al remover cuenta de la whitelist: ' + error.message);
-        }
-    }
-
-    // Remover administrador
-    async function removeAdmin(address) {
-        try {
             await contractInstance.methods.removeAdmin(address).send({ from: userAccount });
-            alert('Administrador removido exitosamente.');
+            alert('Usuario eliminado de whitelist y roles de administrador.');
             loadInitialData();
         } catch (error) {
-            console.error('Error al remover administrador:', error);
-            alert('Error al remover administrador: ' + error.message);
+            console.error('Error al eliminar usuario:', error);
+            alert('Error: ' + error.message);
         }
     }
 
-    // Event listeners for action buttons
-    // Añadir cuenta a la whitelist
+    // Evento para añadir un nuevo usuario
     document.getElementById('addAccountButton').addEventListener('click', async () => {
         const address = document.getElementById('addAccount').value.trim();
         if (web3.utils.isAddress(address)) {
             try {
                 await contractInstance.methods.addToWhitelist(address).send({ from: userAccount });
-                alert('Cuenta añadida a la whitelist exitosamente.');
+                alert('Usuario agregado a whitelist.');
                 document.getElementById('addAccount').value = '';
                 loadInitialData();
             } catch (error) {
-                console.error('Error al añadir cuenta a la whitelist:', error);
-                alert('Error al añadir cuenta a la whitelist: ' + error.message);
+                console.error('Error al agregar usuario a whitelist:', error);
+                alert('Error: ' + error.message);
             }
         } else {
-            alert('Por favor, ingresa una dirección válida de Ethereum.');
+            alert('Por favor, ingresa una dirección de Ethereum válida.');
         }
     });
 
-    // Remover cuenta de la whitelist
-    document.getElementById('removeAccountButton').addEventListener('click', async () => {
-        const address = document.getElementById('removeAccount').value.trim();
-        if (web3.utils.isAddress(address)) {
-            try {
-                await contractInstance.methods.removeFromWhitelist(address).send({ from: userAccount });
-                alert('Cuenta removida de la whitelist exitosamente.');
-                document.getElementById('removeAccount').value = '';
-                loadInitialData();
-            } catch (error) {
-                console.error('Error al remover cuenta de la whitelist:', error);
-                alert('Error al remover cuenta de la whitelist: ' + error.message);
-            }
-        } else {
-            alert('Por favor, ingresa una dirección válida de Ethereum.');
-        }
+    // Evento para refrescar el monto establecido
+    refreshAmountButton.addEventListener('click', async () => {
+        await loadEstablishedAmount();
+        alert('Monto establecido actualizado.');
     });
 
-    // Añadir administrador
-    document.getElementById('addAdminButton').addEventListener('click', async () => {
-        const address = document.getElementById('addAdmin').value.trim();
-        if (web3.utils.isAddress(address)) {
-            try {
-                await contractInstance.methods.addAdmin(address).send({ from: userAccount });
-                alert('Administrador añadido exitosamente.');
-                document.getElementById('addAdmin').value = '';
-                loadInitialData();
-            } catch (error) {
-                console.error('Error al añadir administrador:', error);
-                alert('Error al añadir administrador: ' + error.message);
-            }
-        } else {
-            alert('Por favor, ingresa una dirección válida de Ethereum.');
+    // Evento para establecer un nuevo monto
+    // Evento para establecer un nuevo monto
+setAmountButton.addEventListener('click', async () => {
+    const amount = sendAmountInput.value.trim();
+    if (!isNaN(amount) && amount > 0) {
+        try {
+            // Verificar si amount está en Ether o Wei
+            const amountWei = web3.utils.toWei(amount, 'ether');
+            await contractInstance.methods.setEstablishedAmount(amountWei).send({ from: userAccount });
+            alert('Monto establecido actualizado.');
+            sendAmountInput.value = '';
+            await loadEstablishedAmount();
+        } catch (error) {
+            console.error('Error al establecer el monto:', error);
+            alert('Error: ' + error.message);
         }
-    });
+    } else {
+        alert('Por favor, ingresa un monto válido.');
+    }
+});
 
-    // Remover administrador
-    document.getElementById('removeAdminButton').addEventListener('click', async () => {
-        const address = document.getElementById('removeAdmin').value.trim();
-        if (web3.utils.isAddress(address)) {
-            try {
-                await contractInstance.methods.removeAdmin(address).send({ from: userAccount });
-                alert('Administrador removido exitosamente.');
-                document.getElementById('removeAdmin').value = '';
-                loadInitialData();
-            } catch (error) {
-                console.error('Error al remover administrador:', error);
-                alert('Error al remover administrador: ' + error.message);
-            }
-        } else {
-            alert('Por favor, ingresa una dirección válida de Ethereum.');
-        }
-    });
 
-    // Establecer monto
-    document.getElementById('setAmountButton').addEventListener('click', async () => {
-        const amount = document.getElementById('sendAmount').value.trim();
-        if (!isNaN(amount) && amount > 0) {
-            try {
-                await contractInstance.methods.setEstablishedAmount(web3.utils.toWei(amount, 'ether')).send({ from: userAccount });
-                alert('Monto establecido exitosamente.');
-                document.getElementById('sendAmount').value = '';
-            } catch (error) {
-                console.error('Error al establecer el monto:', error);
-                alert('Error al establecer el monto: ' + error.message);
-            }
-        } else {
-            alert('Por favor, ingresa un monto válido.');
-        }
-    });
-
-    // Enviar balance
-    document.getElementById('sendBalanceButton').addEventListener('click', async () => {
-        const address = document.getElementById('sendAccount').value.trim();
-        if (web3.utils.isAddress(address)) {
-            try {
-                await contractInstance.methods.sendBalance(address).send({ from: userAccount });
-                alert('Balance enviado exitosamente.');
-                document.getElementById('sendAccount').value = '';
-            } catch (error) {
-                console.error('Error al enviar balance:', error);
-                alert('Error al enviar balance: ' + error.message);
-            }
-        } else {
-            alert('Por favor, ingresa una dirección válida de Ethereum.');
-        }
-    });
-
-    // Handle account changes
+    // Manejar cambios de cuenta
     function handleAccountsChanged(accounts) {
         if (accounts.length === 0) {
             alert('Por favor, conecta tu cuenta en MetaMask.');
-            // Hide fields and show connect button
             initializePage();
             connectButton.style.display = 'block';
         } else {
             userAccount = accounts[0];
             accountInfo.textContent = `${userAccount}`;
-            // Re-initialize contract and check permissions
             connectMetamask();
         }
     }
 
-    // Handle network changes
+    // Manejar cambios de red
     function handleChainChanged(_chainId) {
         window.location.reload();
     }
 
-    // Optional: Verify network
+    // Verificar la red
     async function verifyNetwork() {
         const chainId = await web3.eth.getChainId();
-        if (Number(chainId) !== 11155111) { // Sepolia network
+        if (Number(chainId) !== 11155111) { // Red de prueba Sepolia
             alert('Por favor, cambia a la red de prueba Sepolia en MetaMask.');
-            // Optionally, you can try to switch networks programmatically
         }
     }
 
-    // Initialize the smart contract
+    // Inicializar el contrato inteligente
     async function initContract() {
         if (typeof contractABI === 'undefined' || typeof contractAddress === 'undefined') {
             alert('El contrato no está definido correctamente.');
@@ -302,7 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
         contractInstance = new web3.eth.Contract(contractABI, contractAddress);
     }
 
-    // Event listener for connect button
+    // Evento para el botón de conectar
     connectButton.addEventListener('click', connectMetamask);
 
 });
