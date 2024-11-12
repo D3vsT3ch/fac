@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract DocumentManager {
+import "@opengsn/contracts/src/BaseRelayRecipient.sol";
+
+
+contract DocumentManager is BaseRelayRecipient {
     address public owner;
     uint256 public establishedAmount;
 
@@ -28,26 +31,31 @@ contract DocumentManager {
     event BalanceSent(address indexed to, uint256 amount);
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Solo el propietario puede realizar esta accion");
+        require(_msgSender() == owner, "Solo el propietario puede realizar esta accion");
         _;
     }
 
     modifier onlyAdmin() {
-        require(adminList[msg.sender], "Solo administradores pueden realizar esta accion");
+        require(adminList[_msgSender()], "Solo administradores pueden realizar esta accion");
         _;
     }
 
     modifier onlyWhitelisted() {
-        require(whiteList[msg.sender], "Usuario no esta en la lista blanca");
+        require(whiteList[_msgSender()], "Usuario no esta en la lista blanca");
         _;
     }
 
-    constructor() {
-        owner = msg.sender;
+    constructor(address _trustedForwarder) {
+        _setTrustedForwarder(_trustedForwarder);
+        owner = _msgSender();
         adminList[owner] = true;
         adminAddresses.push(owner);
         whiteList[owner] = true;
         whitelistedAddresses.push(owner);
+    }
+
+    function versionRecipient() external view override returns (string memory) {
+        return "1.0.0";
     }
 
     function addAdmin(address _admin) public onlyOwner {
@@ -114,10 +122,10 @@ contract DocumentManager {
     }
 
     function saveDocument(string memory _data) public onlyWhitelisted returns (bytes32) {
-        bytes32 docHash = keccak256(abi.encodePacked(_data, block.timestamp, msg.sender));
-        documents[docHash] = Document(block.timestamp, _data, msg.sender);
+        bytes32 docHash = keccak256(abi.encodePacked(_data, block.timestamp, _msgSender()));
+        documents[docHash] = Document(block.timestamp, _data, _msgSender());
         documentHashes.push(docHash);
-        emit DocumentSaved(docHash, msg.sender, block.timestamp);
+        emit DocumentSaved(docHash, _msgSender(), block.timestamp);
         return docHash;
     }
 

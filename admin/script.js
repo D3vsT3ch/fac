@@ -380,7 +380,7 @@ setAmountButton.addEventListener('click', async () => {
     // Verificar la red
     async function verifyNetwork() {
         const chainId = await web3.eth.getChainId();
-        if (Number(chainId) !== 11155111) { // Red de prueba Sepolia
+        if (Number(chainId) !== 31337) { // Red de prueba Sepolia
             alert('Por favor, cambia a la red de prueba Sepolia en MetaMask.');
         }
     }
