@@ -3,9 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
-contract DocumentManager is BaseRelayRecipient {
+contract FacOperations is BaseRelayRecipient {
     address public immutable owner;
-    uint256 public contractBalance;
     uint256 public establishedAmount;
 
     mapping(address => bool) private adminList;
@@ -29,7 +28,6 @@ contract DocumentManager is BaseRelayRecipient {
     event AmountEstablished(uint256 amount);
     event DocumentSaved(bytes32 indexed docHash, address indexed uploader, uint256 timestamp);
     event BalanceSent(address indexed to, uint256 amount);
-    event FundsDeposited(address indexed from, uint256 amount);
     event GasRefunded(address indexed user, uint256 amount);
 
     modifier onlyOwner() {
@@ -48,7 +46,7 @@ contract DocumentManager is BaseRelayRecipient {
     }
 
     constructor(address _trustedForwarder) {
-        owner = msg.sender; // Usamos msg.sender en el constructor
+        owner = msg.sender;
         _setTrustedForwarder(_trustedForwarder);
         
         // Inicializar el owner como admin y whitelisted
@@ -58,25 +56,8 @@ contract DocumentManager is BaseRelayRecipient {
         whitelistedAddresses.push(msg.sender);
     }
 
-    receive() external payable {
-        contractBalance += msg.value;
-        emit FundsDeposited(msg.sender, msg.value);
-    }
-
-    fallback() external payable {
-        contractBalance += msg.value;
-        emit FundsDeposited(msg.sender, msg.value);
-    }
-
-    function deposit() external payable {
-        require(msg.value > 0, "El valor debe ser mayor que 0");
-        contractBalance += msg.value;
-        emit FundsDeposited(_msgSender(), msg.value);
-    }
-
-    function getContractBalance() external view returns (uint256) {
-        return address(this).balance;
-    }
+    receive() external payable {}
+    fallback() external payable {}
 
     function addAdmin(address _admin) external onlyOwner {
         require(!adminList[_admin], "Ya es administrador");
@@ -188,6 +169,14 @@ contract DocumentManager is BaseRelayRecipient {
         require(address(this).balance >= amount, "Saldo insuficiente para reembolso");
         payable(user).transfer(amount);
         emit GasRefunded(user, amount);
+    }
+
+    function _msgSender() internal view override returns (address) {
+        return BaseRelayRecipient._msgSender();
+    }
+
+    function _msgData() internal view override returns (bytes calldata) {
+        return BaseRelayRecipient._msgData();
     }
 
     function versionRecipient() external pure override returns (string memory) {

@@ -2,48 +2,82 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Web3 Demo</title>
-    <link rel="stylesheet" href="styles.css">
-    <!-- Incluir Web3.js desde jsDelivr -->
-    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+    <title>Panel de Administración</title>
+    <link rel="stylesheet" href="../styles.css">
+    <!-- Cargar Web3 y GSN en el orden correcto -->
+    <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+    <script src="https://unpkg.com/@opengsn/provider@2.2.5/dist/RelayProvider.min.js"></script>
 </head>
-<body id="signBody">
-    <div id="userCointainer">
-        <img src="./images/icon_user.svg" alt="user">
+<body>
+    <div id="userCointainer" style="top: 55px; right: 50px; color: white;">
+        <img src="../images/icon_user.svg" alt="user">
         <strong>Usuario: </strong> 
         <div id="accountInfo"></div>
     </div>
 
-    <div class="container">
-        <img src="./images/logo.svg" alt="logo">
-        <div class="title">
-            Plataforma 
-        </div>
-        <div class="subTitle">
-            Firma Electrónica
+    <div id="containerBody">
+        <div id="headerSection">
+            <img class="logo" src="../images/logo.svg" alt="logo">
         </div>
 
-        <div id="containerEnter">
-            <div id="online">
-                <span>En línea</span>
-                <img src="./images/icon_checked.svg" alt="online">
-            </div>
-            <div id="jsonContent">
-                <!-- Aquí se mostrarán los datos y estados -->
-            </div>
+        <div class="centerText" style="margin-top: 20px;">
             <button id="connectButton">Conectar</button>
-            <button id="actionButton" style="display:none;">Firmar</button> <!-- Botón Unificado -->
         </div>
-        
-        <!-- Animación de Carga -->
-        <div id="loading" style="display:none;">
-            <!-- El contenido será manejado por JavaScript -->
-             
+
+        <div id="bodySection" class="hideOnLoad">
+            <div class="space50"></div>
+            <div class="centerText marginBottom50">
+                <div class="titleAdmin">
+                    Gestión de cuentas en la whitelist
+                </div>
+            </div>
+
+            <div class="flexH gap30 margin46">
+                <div class="flex1">
+                    <label for="addAccount" class="titleLabel">Añadir nuevo usuario</label>
+                    <div class="containerInput">
+                        <input id="addAccount" class="inputText" type="text" placeholder="Dirección de Ethereum" />
+                        <img id="addAccountButton" class="iconAction" src="../images/icon_more.svg" />
+                    </div>
+                </div>
+
+                <div class="flex1">
+                    <label class="titleLabel">Balance del Contrato</label>
+                    <div class="containerInput">
+                        <input id="contractBalance" class="inputText" type="text" readonly />
+                        <img id="refreshBalance" class="iconAction" src="../images/icon_refresh.svg" title="Actualizar balance" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="flexH gap30 margin46 containerTable">
+                <div class="flex1">
+                    <div class="centerText margin33">
+                        <div class="titleLabel">Usuarios</div>
+                    </div>
+                    <table id="userTable" cellspacing="0">
+                        <tr>
+                            <td align="center">
+                                <strong>Cuenta</strong>
+                            </td>
+                            <td align="center">
+                                <strong>Rol</strong>
+                            </td>
+                            <td align="center">
+                                <strong>Acciones</strong>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="centerText margin46">
+                <a href="deposit.html" class="button">Ir a Gestión de Fondos</a>
+            </div>
         </div>
     </div>
-    <!-- Incluir script.js después de Web3.js -->
-    <script src="contato.js"></script>
+    <script src="js/contract-config.js"></script>
+    <script src="../contato.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

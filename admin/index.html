@@ -4,12 +4,10 @@
     <meta charset="UTF-8">
     <title>Panel de Administración</title>
     <link rel="stylesheet" href="../styles.css">
-    <!-- Incluir Web3.js desde jsDelivr -->
-    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+  <!-- Load Web3 -->
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
 </head>
 <body>
-
-    <!-- Contenedor de Usuario -->
     <div id="userCointainer" style="top: 55px; right: 50px; color: white;">
         <img src="../images/icon_user.svg" alt="user">
         <strong>Usuario: </strong> 
@@ -21,12 +19,10 @@
             <img class="logo" src="../images/logo.svg" alt="logo">
         </div>
 
-        <!-- Botón de Conectar -->
         <div class="centerText" style="margin-top: 20px;">
             <button id="connectButton">Conectar</button>
         </div>
 
-        <!-- Contenido Principal -->
         <div id="bodySection" class="hideOnLoad">
             <div class="space50"></div>
             <div class="centerText marginBottom50">
@@ -35,7 +31,6 @@
                 </div>
             </div>
 
-            <!-- Añadir nuevo usuario -->
             <div class="flexH gap30 margin46">
                 <div class="flex1">
                     <label for="addAccount" class="titleLabel">Añadir nuevo usuario</label>
@@ -46,180 +41,47 @@
                 </div>
 
                 <div class="flex1">
-                    <label for="sendAmount" class="titleLabel">Monto establecido</label>
+                    <label class="titleLabel">Balance del Contrato</label>
                     <div class="containerInput">
-                        <input id="sendAmount" class="inputText" type="text" />
-                        <img id="setAmountButton" class="iconAction" src="../images/icon_edit_amount.svg" />
+                        <input id="contractBalance" class="inputText" type="text" readonly />
+                        <img id="refreshBalance" class="iconAction" src="../images/icon_more.svg" title="Actualizar balance" />
                     </div>
                 </div>
             </div>
 
-           
-
-            <!-- Tabla de Usuarios -->
             <div class="flexH gap30 margin46 containerTable">
                 <div class="flex1">
                     <div class="centerText margin33">
                         <div class="titleLabel">Usuarios</div>
                     </div>
                     <table id="userTable" cellspacing="0">
-                        <!-- Las filas de usuarios se llenarán dinámicamente -->
                         <tr>
                             <td align="center">
                                 <strong>Cuenta</strong>
                             </td>
-
                             <td align="center">
                                 <strong>Rol</strong>
                             </td>
-
                             <td align="center">
                                 <strong>Acciones</strong>
                             </td>
                         </tr>
-
-                            <tr>
-                                <td>
-                                    0x20d9edCaE3fF88178C76ffdA33b8959DAa960c33
-                                </td>
-
-                                <td>
-                                    usuario
-                                </td>
-    
-                                <td>
-                                    <img src="../images/icon_symbol_money.svg" />
-                                    <img src="../images/icon_group_users.svg" />
-                                    <img src="../images/icon_delete.svg" />
-                                </td>
-                            </tr>
-    
-                            <tr>
-                                <td>
-                                    0x20d9edCaE3fF88178C76ffdA33b8959DAa960c33
-                                </td>
-
-                                <td>
-                                    Administrador
-                                </td>
-    
-                                <td>
-                                    <img src="../images/icon_symbol_money.svg" />
-                                    <img src="../images/icon_group_users.svg" />
-                                    <img src="../images/icon_delete.svg" />
-                                </td>
-                            </tr>
-
-                            <tr>
-                                <td>
-                                    0x20d9edCaE3fF88178C76ffdA33b8959DAa960c33
-                                </td>
-
-                                <td>
-                                    usuario
-                                </td>
-    
-                                <td>
-                                    <img src="../images/icon_symbol_money.svg" />
-                                    <img src="../images/icon_group_users.svg" />
-                                    <img src="../images/icon_delete.svg" />
-                                </td>
-                            </tr>
-
-                            <tr>
-                                <td>
-                                    0x20d9edCaE3fF88178C76ffdA33b8959DAa960c33
-                                </td>
-
-                                <td>
-                                    usuario
-                                </td>
-    
-                                <td>
-                                    <img src="../images/icon_symbol_money.svg" />
-                                    <img src="../images/icon_group_users.svg" />
-                                    <img src="../images/icon_delete.svg" />
-                                </td>
-                            </tr>
-
-                            <tr>
-                                <td>
-                                    0x20d9edCaE3fF88178C76ffdA33b8959DAa960c33
-                                </td>
-
-                                <td>
-                                    usuario
-                                </td>
-    
-                                <td>
-                                    <img src="../images/icon_symbol_money.svg" />
-                                    <img src="../images/icon_group_users.svg" />
-                                    <img src="../images/icon_delete.svg" />
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    0x20d9edCaE3fF88178C76ffdA33b8959DAa960c33
-                                </td>
-
-                                <td>
-                                    usuario
-                                </td>
-    
-                                <td>
-                                    <img src="../images/icon_symbol_money.svg" />
-                                    <img src="../images/icon_group_users.svg" />
-                                    <img src="../images/icon_delete.svg" />
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    0x20d9edCaE3fF88178C76ffdA33b8959DAa960c33
-                                </td>
-
-                                <td>
-                                    usuario
-                                </td>
-    
-                                <td>
-                                    <img src="../images/icon_symbol_money.svg" />
-                                    <img src="../images/icon_group_users.svg" />
-                                    <img src="../images/icon_delete.svg" />
-                                </td>
-                            </tr>
-    
-                            <tr>
-                                <td>
-                                    0x20d9edCaE3fF88178C76ffdA33b8959DAa960c33
-                                </td>
-
-                                <td>
-                                    usuario
-                                </td>
-    
-                                <td>
-                                    <img src="../images/icon_symbol_money.svg" />
-                                    <img src="../images/icon_group_users.svg" />
-                                    <img src="../images/icon_delete.svg" />
-                                </td>
-                            </tr>
                     </table>
                 </div>
             </div>
 
-            <div class="flexH gap30 margin46">
-                <div class="flex1">
-                    <label class="titleLabel">Depositar Ether al Contrato</label>
-                    <div class="containerInput">
-                        <input id="depositAmount" class="inputText" type="text" placeholder="Cantidad de Ether" />
-                        <img id="depositButton" class="iconAction" src="../images/icon_send_account.svg" title="Depositar Ether" />
-                    </div>
-                </div>
+            <div class="centerText margin46">
+                <a href="deposit.html" class="button">Ir a Gestión de Fondos</a>
             </div>
         </div>
     </div>
-    <!-- Incluir script.js -->
-    <script src="../contato.js"></script>
-    <script src="script.js"></script>
+    <!-- Load application scripts -->
+   
+       <!-- Load application scripts -->
+       <script src="js/contract-config.js"></script>
+       <script src="js/blockchain-utils.js"></script>
+       <script src="js/blockchain-service.js"></script>
+       <script src="script.js"></script>
+   
 </body>
 </html>
