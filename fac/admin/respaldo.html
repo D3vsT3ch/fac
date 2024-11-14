@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web3 Demo</title>
+    <link rel="stylesheet" href="../styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
+</head>
+<body>
+
+    <div id="userCointainer" style="top: 55px; right: 50px; color: white;">
+        <img src="../images/icon_user.svg" alt="user">
+        <strong>Usuario: </strong> 
+        <div id="accountInfo"></div>
+    </div>
+
+    <div id="containerBody">
+        <div id="headerSection">
+            <img class="logo" src="../images/logo.svg" alt="logo">
+        </div>
+
+        <div id="bodySection">
+            <div class="space50"></div>
+            <div class="centerText marginBottom50">
+                <div class="titleAdmin">
+                    Añadir cuenta a la whitelist
+                </div>
+            </div>
+
+            <div class="flexH gap30 margin46">
+                <div class="flex1">
+                    <label for="addAccount" class="titleLabel">Añadir cuenta</label>
+                    <div class="containerInput">
+                        <input id="addAccount" class="inputText" type="text" />
+                        <img class="iconAction" src="../images/icon_more.svg" />
+                    </div>
+                    
+                </div>
+
+                
+
+                <div class="flex1">
+                    <label for="addAdmin" class="titleLabel">Añadir administrador</label>
+                    <div class="containerInput">
+                        <input id="addAdmin" class="inputText" type="text" />
+                        <img class="iconAction" src="../images/icon_more.svg" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="centerText marginBottom50">
+                <div class="titleAdmin">
+                    Gestión de cuentas
+                </div>
+            </div>
+
+            <div class="flexH gap30 margin46">
+                <div class="flex1">
+                    <label for="removeAccount" class="titleLabel">Remover cuenta</label>
+                    <div class="containerInput">
+                        <input id="removeAccount" class="inputText" type="text" />
+                        <img class="iconAction" src="../images/icon_less.svg" />
+                    </div>                    
+                </div>
+
+                
+
+                <div class="flex1">
+                    <label for="removeAdmin" class="titleLabel">Remover administrador</label>
+                    <div class="containerInput">
+                        <input id="removeAdmin" class="inputText" type="text" />
+                        <img class="iconAction" src="../images/icon_less.svg" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="centerText marginBottom50">
+                <div class="titleAdmin">
+                    Transferencia 
+                </div>
+            </div>
+
+            <div class="flexH gap30 margin46">
+                <div class="flex1">
+                    <label for="sendAccount" class="titleLabel">Cuenta destino</label>
+                    <div class="containerInput">
+                        <input id="sendAccount" class="inputText" type="text" />
+                        <img class="iconAction" src="../images/icon_send_account.svg" />
+                    </div>                    
+                </div>
+
+                
+
+                <div class="flex1">
+                    <label for="sendAmount" class="titleLabel">Monto establecido</label>
+                    <div class="containerInput">
+                        <input id="sendAmount" class="inputText" type="text" />
+                        <img class="iconAction" src="../images/icon_edit_amount.svg" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="flexH gap30 margin46">
+                <div class="flex1">
+
+                    <div class="centerText margin33">
+                        <div class="titleLabel">Usuario</div>
+                    </div>
+                    
+
+                    <table id="userTable" cellspacing="0">
+                        <tr>
+                            <td>
+                                0x20d9edCaE3fF88178C76ffdA33b8959DAa960c33
+                            </td>
+
+                            <td>
+                                <img src="../images/icon_delete.svg" />
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td>
+                                0x20d9edCaE3fF88178C76ffdA33b8959DAa960c33
+                            </td>
+
+                            <td>
+                                <img src="../images/icon_delete.svg" />
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td>
+                                0x20d9edCaE3fF88178C76ffdA33b8959DAa960c33
+                            </td>
+
+                            <td>
+                                <img src="../images/icon_delete.svg" />
+                            </td>
+                        </tr>
+                    </table>
+                    
+                </div>
+
+                <div class="flex1">
+                    <div class="centerText margin33">
+                        <div class="titleLabel">Administrador</div>
+                    </div>
+                    
+
+                    <table id="userTable" cellspacing="0">
+                        <tr>
+                            <td>
+                                0x20d9edCaE3fF88178C76ffdA33b8959DAa960c33
+                            </td>
+
+                            <td>
+                                <img src="../images/icon_delete.svg" />
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td>
+                                0x20d9edCaE3fF88178C76ffdA33b8959DAa960c33
+                            </td>
+
+                            <td>
+                                <img src="../images/icon_delete.svg" />
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td>
+                                0x20d9edCaE3fF88178C76ffdA33b8959DAa960c33
+                            </td>
+
+                            <td>
+                                <img src="../images/icon_delete.svg" />
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="../contato.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
