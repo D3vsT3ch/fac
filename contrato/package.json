@@ -12,7 +12,6 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@opengsn/contracts": "^2.2.6",
-    "@openzeppelin/contracts": "^4.9.3",
     "hardhat": "^2.22.15"
   },
   "dependencies": {

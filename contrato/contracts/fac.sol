@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import "@opengsn/contracts/src/BaseRelayRecipient.sol";
 
+
 contract DocumentManager is BaseRelayRecipient {
-    address public immutable owner;
-    uint256 public contractBalance;
+    address public owner;
     uint256 public establishedAmount;
 
     mapping(address => bool) private adminList;
@@ -29,8 +29,6 @@ contract DocumentManager is BaseRelayRecipient {
     event AmountEstablished(uint256 amount);
     event DocumentSaved(bytes32 indexed docHash, address indexed uploader, uint256 timestamp);
     event BalanceSent(address indexed to, uint256 amount);
-    event FundsDeposited(address indexed from, uint256 amount);
-    event GasRefunded(address indexed user, uint256 amount);
 
     modifier onlyOwner() {
         require(_msgSender() == owner, "Solo el propietario puede realizar esta accion");
@@ -48,44 +46,26 @@ contract DocumentManager is BaseRelayRecipient {
     }
 
     constructor(address _trustedForwarder) {
-        owner = msg.sender; // Usamos msg.sender en el constructor
         _setTrustedForwarder(_trustedForwarder);
-        
-        // Inicializar el owner como admin y whitelisted
-        adminList[msg.sender] = true;
-        adminAddresses.push(msg.sender);
-        whiteList[msg.sender] = true;
-        whitelistedAddresses.push(msg.sender);
+        owner = _msgSender();
+        adminList[owner] = true;
+        adminAddresses.push(owner);
+        whiteList[owner] = true;
+        whitelistedAddresses.push(owner);
     }
 
-    receive() external payable {
-        contractBalance += msg.value;
-        emit FundsDeposited(msg.sender, msg.value);
+    function versionRecipient() external view override returns (string memory) {
+        return "1.0.0";
     }
 
-    fallback() external payable {
-        contractBalance += msg.value;
-        emit FundsDeposited(msg.sender, msg.value);
-    }
-
-    function deposit() external payable {
-        require(msg.value > 0, "El valor debe ser mayor que 0");
-        contractBalance += msg.value;
-        emit FundsDeposited(_msgSender(), msg.value);
-    }
-
-    function getContractBalance() external view returns (uint256) {
-        return address(this).balance;
-    }
-
-    function addAdmin(address _admin) external onlyOwner {
+    function addAdmin(address _admin) public onlyOwner {
         require(!adminList[_admin], "Ya es administrador");
         adminList[_admin] = true;
         adminAddresses.push(_admin);
         emit AdminAdded(_admin);
     }
 
-    function removeAdmin(address _admin) external onlyOwner {
+    function removeAdmin(address _admin) public onlyOwner {
         require(_admin != owner, "No se puede eliminar al propietario");
         require(adminList[_admin], "No es administrador");
         adminList[_admin] = false;
@@ -99,14 +79,14 @@ contract DocumentManager is BaseRelayRecipient {
         emit AdminRemoved(_admin);
     }
 
-    function addToWhitelist(address _user) external onlyAdmin {
+    function addToWhitelist(address _user) public onlyAdmin {
         require(!whiteList[_user], "Usuario ya esta en la lista blanca");
         whiteList[_user] = true;
         whitelistedAddresses.push(_user);
         emit UserWhitelisted(_user);
     }
 
-    function removeFromWhitelist(address _user) external onlyAdmin {
+    function removeFromWhitelist(address _user) public onlyAdmin {
         require(_user != owner, "No se puede eliminar al propietario");
         require(whiteList[_user], "Usuario no esta en la lista blanca");
         whiteList[_user] = false;
@@ -120,28 +100,28 @@ contract DocumentManager is BaseRelayRecipient {
         emit UserRemovedFromWhitelist(_user);
     }
 
-    function setEstablishedAmount(uint256 _amount) external onlyAdmin {
+    function setEstablishedAmount(uint256 _amount) public onlyAdmin {
         establishedAmount = _amount;
         emit AmountEstablished(_amount);
     }
 
-    function isAdmin(address _user) external view returns (bool) {
+    function isAdmin(address _user) public view returns (bool) {
         return adminList[_user];
     }
 
-    function isWhitelisted(address _user) external view returns (bool) {
+    function isWhitelisted(address _user) public view returns (bool) {
         return whiteList[_user];
     }
 
-    function getAdmins() external view returns (address[] memory) {
+    function getAdmins() public view returns (address[] memory) {
         return adminAddresses;
     }
 
-    function getWhitelistedUsers() external view returns (address[] memory) {
+    function getWhitelistedUsers() public view returns (address[] memory) {
         return whitelistedAddresses;
     }
 
-    function saveDocument(string memory _data) external onlyWhitelisted returns (bytes32) {
+    function saveDocument(string memory _data) public onlyWhitelisted returns (bytes32) {
         bytes32 docHash = keccak256(abi.encodePacked(_data, block.timestamp, _msgSender()));
         documents[docHash] = Document(block.timestamp, _data, _msgSender());
         documentHashes.push(docHash);
@@ -149,13 +129,13 @@ contract DocumentManager is BaseRelayRecipient {
         return docHash;
     }
 
-    function getDocument(bytes32 _docHash) external view returns (uint256, string memory, address) {
+    function getDocument(bytes32 _docHash) public view returns (uint256, string memory, address) {
         Document memory doc = documents[_docHash];
         require(doc.timestamp != 0, "Documento no existe");
         return (doc.timestamp, doc.data, doc.uploader);
     }
 
-    function getAllDocuments() external view returns (
+    function getAllDocuments() public view returns (
         bytes32[] memory,
         uint256[] memory,
         string[] memory,
@@ -177,20 +157,13 @@ contract DocumentManager is BaseRelayRecipient {
         return (documentHashes, timestamps, datas, uploaders);
     }
 
-    function sendBalance(address payable _to) external onlyOwner {
+    function sendBalance(address payable _to) public onlyOwner {
         require(establishedAmount > 0, "Monto no establecido");
         require(address(this).balance >= establishedAmount, "Saldo insuficiente");
         _to.transfer(establishedAmount);
         emit BalanceSent(_to, establishedAmount);
     }
 
-    function refundGas(address user, uint256 amount) external onlyOwner {
-        require(address(this).balance >= amount, "Saldo insuficiente para reembolso");
-        payable(user).transfer(amount);
-        emit GasRefunded(user, amount);
-    }
-
-    function versionRecipient() external pure override returns (string memory) {
-        return "2.2.6";
-    }
+    receive() external payable {}
+    fallback() external payable {}
 }

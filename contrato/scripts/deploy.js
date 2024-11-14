@@ -1,68 +1,32 @@
-const hre = require("hardhat");
+const { ethers } = require("hardhat");
 
 async function main() {
-    try {
-        console.log("\n=== Iniciando despliegue de contratos ===\n");
+    // Obtener la cuenta que desplegará el contrato
+    const [deployer] = await ethers.getSigners();
+    console.log("Desplegando el contrato con la cuenta:", deployer.address);
 
-        const [deployer] = await ethers.getSigners();
-        console.log("Cuenta del deployer:", deployer.address);
+    const DocumentManager = await ethers.getContractFactory("DocumentManager");
 
-        const balance = await deployer.provider.getBalance(deployer.address);
-        console.log("Balance del deployer:", ethers.formatEther(balance), "ETH");
+    // Dirección del trustedForwarder desplegado por OpenGSN en tu red local
+    const trustedForwarderAddress = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9";
 
-        // Desplegar FacFunds
-        console.log("\nDesplegando FacFunds...");
-        const FacFunds = await ethers.getContractFactory("FacFunds");
-        const facFunds = await FacFunds.deploy();
-        await facFunds.waitForDeployment();
-        const facFundsAddress = await facFunds.getAddress();
-        console.log("FacFunds desplegado en:", facFundsAddress);
+    // Desplegar el contrato pasando la dirección del trustedForwarder
+    const documentManager = await DocumentManager.deploy(trustedForwarderAddress);
 
-        // Dirección del trustedForwarder de OpenGSN
-        const trustedForwarder = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9";
-        console.log("\nTrustedForwarder:", trustedForwarder);
+    // Esperar a que el contrato esté desplegado
+    await documentManager.waitForDeployment();
 
-        // Desplegar FacOperations
-        console.log("\nDesplegando FacOperations...");
-        const FacOperations = await ethers.getContractFactory("FacOperations");
-        const facOperations = await FacOperations.deploy(trustedForwarder, {
-            gasLimit: 5000000
-        });
-        await facOperations.waitForDeployment();
-        const facOperationsAddress = await facOperations.getAddress();
-        console.log("FacOperations desplegado en:", facOperationsAddress);
+    // Obtener la dirección del contrato desplegado
+    console.log("DocumentManager desplegado en:", documentManager.target);
 
-        // Verificar los despliegues
-        console.log("\n=== Verificando despliegues ===");
-        
-        const fundsOwner = await facFunds.owner();
-        const operationsOwner = await facOperations.owner();
-        const forwarderAddress = await facOperations.trustedForwarder();
-
-        console.log("\nFacFunds:");
-        console.log("- Owner:", fundsOwner);
-        console.log("\nFacOperations:");
-        console.log("- Owner:", operationsOwner);
-        console.log("- TrustedForwarder:", forwarderAddress);
-
-        console.log("\n=== Despliegue completado exitosamente ===");
-        console.log("----------------------------------------");
-        console.log("FacFunds:", facFundsAddress);
-        console.log("FacOperations:", facOperationsAddress);
-        console.log("----------------------------------------\n");
-
-    } catch (error) {
-        console.error("\n=== Error durante el despliegue ===");
-        console.error("Mensaje:", error.message);
-        console.error("Stack:", error.stack);
-        process.exit(1);
-    }
+    // Obtener el propietario del contrato llamando a la función owner()
+    const ownerAddress = await documentManager.owner();
+    console.log("El propietario del contrato es:", ownerAddress);
 }
 
 main()
     .then(() => process.exit(0))
-    .catch((error) => {
-        console.error("\n=== Error fatal ===");
-        console.error(error);
+    .catch(error => {
+        console.error("Error en el script de despliegue:", error);
         process.exit(1);
     });
