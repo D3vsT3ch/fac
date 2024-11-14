@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // Elementos del DOM
     const connectButton = document.getElementById('connectButton');
     const accountInfo = document.getElementById('accountInfo');
     const addAccountInput = document.getElementById('addAccount');
@@ -11,9 +10,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const contractBalanceInput = document.getElementById('contractBalance');
     const refreshBalance = document.getElementById('refreshBalance');
 
-    let web3;
-    let userAccount;
-    let operationsContract;
     let isOwner = false;
 
     function initializePage() {
@@ -27,138 +23,60 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     initializePage();
 
-    async function initGSN() {
-        try {
-            const gsnConfig = {
-                paymasterAddress: paymaster,
-                forwarderAddress: trustedForwarder,
-                relayHubAddress: relayHub,
-                chainId: 31337,
-                methodSuffix: '_v4',
-                jsonStringifyRequest: true,
-                loggerConfiguration: {
-                    logLevel: 'debug'
-                }
-            };
-
-            const gsnProvider = await RelayProvider.newProvider({
-                provider: window.ethereum,
-                config: gsnConfig
-            }).init();
-
-            return new Web3(gsnProvider);
-        } catch (error) {
-            console.error("Error al inicializar GSN:", error);
-            throw error;
-        }
-    }
-
     async function checkOwnership() {
         try {
-            const ownerAddress = await operationsContract.methods.owner().call();
-            isOwner = userAccount.toLowerCase() === ownerAddress.toLowerCase();
-            console.log("¿Es propietario?", isOwner);
+            if (!BlockchainService.operationsContract) {
+                throw new Error('Contract not initialized');
+            }
+            const ownerMethod = BlockchainService.operationsContract.methods.owner();
+            const ownerAddress = await BlockchainService.callContractMethod(ownerMethod);
+            isOwner = BlockchainService.account.toLowerCase() === ownerAddress.toLowerCase();
+            console.log('Owner check:', { ownerAddress, currentAccount: BlockchainService.account, isOwner });
             return isOwner;
         } catch (error) {
-            console.error("Error al verificar propiedad:", error);
+            console.error("Error checking ownership:", error);
             return false;
         }
     }
 
     async function updateContractBalance() {
         try {
-            const balance = await web3.eth.getBalance(contractAddress);
-            const balanceEth = web3.utils.fromWei(balance, 'ether');
-            console.log("Balance del contrato:", balanceEth, "ETH");
-            
+            const balance = await BlockchainService.web3.eth.getBalance(ContractConfig.addresses.operations);
+            const balanceEth = BlockchainService.web3.utils.fromWei(balance, 'ether');
             if (contractBalanceInput) {
                 contractBalanceInput.value = balanceEth + ' ETH';
             }
-
             return balanceEth;
         } catch (error) {
-            console.error("Error al actualizar balance:", error);
+            console.error("Error updating balance:", error);
             return "0";
         }
     }
 
     async function addUserToWhitelist(address) {
         try {
-            const method = operationsContract.methods.addToWhitelist(address);
-            await method.send({
-                from: userAccount,
-                gasPrice: '0'
-            });
+            const method = BlockchainService.operationsContract.methods.addToWhitelist(address);
+            await BlockchainService.sendTransaction(method);
             alert('Usuario agregado a whitelist');
             addAccountInput.value = '';
             await loadUserList();
         } catch (error) {
-            console.error("Error al agregar usuario:", error);
-            alert('Error al agregar usuario: ' + error.message);
+            console.error("Error adding user:", error);
+            alert('Error: ' + error.message);
         }
     }
-
-    // Funciones globales para la tabla
-    window.handleToggleAdmin = async (address, makeAdmin) => {
-        try {
-            const method = makeAdmin ? 
-                operationsContract.methods.addAdmin(address) : 
-                operationsContract.methods.removeAdmin(address);
-            
-            await method.send({
-                from: userAccount,
-                gasPrice: '0'
-            });
-
-            alert(makeAdmin ? 'Usuario agregado como administrador' : 'Administrador removido');
-            await loadUserList();
-        } catch (error) {
-            console.error('Error al modificar admin:', error);
-            alert('Error al modificar admin: ' + error.message);
-        }
-    };
-
-    window.handleDeleteUser = async (address) => {
-        try {
-            const method = operationsContract.methods.removeFromWhitelist(address);
-            await method.send({
-                from: userAccount,
-                gasPrice: '0'
-            });
-
-            alert('Usuario eliminado');
-            await loadUserList();
-        } catch (error) {
-            console.error('Error al eliminar usuario:', error);
-            alert('Error al eliminar usuario: ' + error.message);
-        }
-    };
-
-    window.handleSendBalance = async (address) => {
-        try {
-            const method = operationsContract.methods.sendBalance(address);
-            await method.send({
-                from: userAccount,
-                gasPrice: '0'
-            });
-
-            alert('Balance enviado exitosamente');
-            await updateContractBalance();
-        } catch (error) {
-            console.error('Error al enviar balance:', error);
-            alert('Error al enviar balance: ' + error.message);
-        }
-    };
 
     async function loadUserList() {
         try {
             const [admins, whitelisted] = await Promise.all([
-                operationsContract.methods.getAdmins().call(),
-                operationsContract.methods.getWhitelistedUsers().call()
+                BlockchainService.callContractMethod(BlockchainService.operationsContract.methods.getAdmins()),
+                BlockchainService.callContractMethod(BlockchainService.operationsContract.methods.getWhitelistedUsers())
             ]);
 
-            const users = new Map();
+            console.log('Loaded users:', { admins, whitelisted });
 
+            const users = new Map();
+            
             for (const address of whitelisted) {
                 users.set(address.toLowerCase(), { address, isWhitelisted: true, isAdmin: false });
             }
@@ -172,44 +90,47 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
 
-            while (userTable.rows.length > 1) {
-                userTable.deleteRow(1);
-            }
-
-            for (const user of users.values()) {
-                const row = userTable.insertRow();
-                
-                const cellAddress = row.insertCell();
-                cellAddress.textContent = user.address;
-
-                const cellRoles = row.insertCell();
-                const roles = [];
-                if (user.isWhitelisted) roles.push("Usuario");
-                if (user.isAdmin) roles.push("Administrador");
-                cellRoles.innerHTML = `<div class="tag">${roles.join(', ')}</div>`;
-
-                const cellActions = row.insertCell();
-                const actionsHtml = [];
-
-                if (user.address.toLowerCase() !== userAccount.toLowerCase()) {
-                    actionsHtml.push(`<img src="../images/icon_symbol_money.svg" onclick="handleSendBalance('${user.address}')" title="Enviar monto establecido">`);
-                }
-
-                if (!user.isAdmin) {
-                    actionsHtml.push(`<img src="../images/icon_group_users.svg" onclick="handleToggleAdmin('${user.address}', true)" title="Hacer administrador">`);
-                } else {
-                    actionsHtml.push(`<img src="../images/icon_remove_admin.svg" onclick="handleToggleAdmin('${user.address}', false)" title="Quitar administrador">`);
-                }
-
-                actionsHtml.push(`<img src="../images/icon_delete.svg" onclick="handleDeleteUser('${user.address}')" title="Eliminar usuario">`);
-                
-                cellActions.innerHTML = actionsHtml.join('');
-            }
-
+            updateUserTable(Array.from(users.values()));
         } catch (error) {
-            console.error("Error al cargar usuarios:", error);
-            alert("Error al cargar la lista de usuarios");
+            console.error("Error loading users:", error);
+            alert("Error loading user list");
         }
+    }
+
+    function updateUserTable(users) {
+        while (userTable.rows.length > 1) {
+            userTable.deleteRow(1);
+        }
+
+        users.forEach(user => {
+            const row = userTable.insertRow();
+            
+            const cellAddress = row.insertCell();
+            cellAddress.textContent = user.address;
+
+            const cellRoles = row.insertCell();
+            const roles = [];
+            if (user.isWhitelisted) roles.push("Usuario");
+            if (user.isAdmin) roles.push("Administrador");
+            cellRoles.innerHTML = `<div class="tag">${roles.join(', ')}</div>`;
+
+            const cellActions = row.insertCell();
+            const actionsHtml = [];
+
+            if (user.address.toLowerCase() !== BlockchainService.account.toLowerCase()) {
+                actionsHtml.push(`<img src="../images/icon_symbol_money.svg" onclick="handleSendBalance('${user.address}')" title="Enviar monto establecido">`);
+            }
+
+            if (!user.isAdmin) {
+                actionsHtml.push(`<img src="../images/icon_group_users.svg" onclick="handleToggleAdmin('${user.address}', true)" title="Hacer administrador">`);
+            } else {
+                actionsHtml.push(`<img src="../images/icon_remove_admin.svg" onclick="handleToggleAdmin('${user.address}', false)" title="Quitar administrador">`);
+            }
+
+            actionsHtml.push(`<img src="../images/icon_delete.svg" onclick="handleDeleteUser('${user.address}')" title="Eliminar usuario">`);
+            
+            cellActions.innerHTML = actionsHtml.join('');
+        });
     }
 
     function showAdminInterface() {
@@ -222,59 +143,64 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function connectMetamask() {
-        if (window.ethereum) {
-            try {
-                await window.ethereum.request({ method: 'eth_requestAccounts' });
-                userAccount = (await window.ethereum.request({ method: 'eth_accounts' }))[0];
-                console.log("Cuenta conectada:", userAccount);
-                
-                if (accountInfo) accountInfo.textContent = userAccount;
+        try {
+            // Initialize Web3 and connect account
+            await BlockchainService.initialize();
+            await BlockchainService.connectAccount();
+            
+            // Check network before proceeding
+            await BlockchainUtils.checkNetwork(BlockchainService.web3);
+            
+            // Initialize contract
+            BlockchainService.initContract(
+                ContractConfig.addresses.operations,
+                ContractConfig.abis.operations
+            );
+            console.log('Contract initialized:', BlockchainService.operationsContract);
 
-                // Inicializar GSN y Web3
-                web3 = await initGSN();
-                operationsContract = new web3.eth.Contract(contractABI, contractAddress);
-
-                const isContractOwner = await checkOwnership();
-                if (!isContractOwner) {
-                    const isAdmin = await operationsContract.methods.isAdmin(userAccount).call();
-                    if (!isAdmin) {
-                        alert("No tienes permisos de administrador");
-                        return;
-                    }
-                }
-
-                showAdminInterface();
-
-                await Promise.all([
-                    updateContractBalance(),
-                    loadUserList()
-                ]);
-
-                window.ethereum.on('accountsChanged', handleAccountsChanged);
-                window.ethereum.on('chainChanged', () => window.location.reload());
-
-            } catch (error) {
-                console.error("Error al conectar:", error);
-                alert("Error al conectar con MetaMask: " + error.message);
+            if (accountInfo) {
+                accountInfo.textContent = BlockchainService.account;
             }
-        } else {
-            alert("Por favor, instala MetaMask");
+
+            const isContractOwner = await checkOwnership();
+            if (!isContractOwner) {
+                const isAdmin = await BlockchainService.callContractMethod(
+                    BlockchainService.operationsContract.methods.isAdmin(BlockchainService.account)
+                );
+                if (!isAdmin) {
+                    alert("No tienes permisos de administrador");
+                    return;
+                }
+            }
+
+            showAdminInterface();
+            await Promise.all([updateContractBalance(), loadUserList()]);
+
+            // Setup event listeners
+            window.ethereum.on('accountsChanged', handleAccountsChanged);
+            window.ethereum.on('chainChanged', () => window.location.reload());
+
+        } catch (error) {
+            console.error("Connection error:", error);
+            alert("Error connecting to MetaMask: " + error.message);
         }
     }
 
     async function handleAccountsChanged(accounts) {
         if (accounts.length === 0) {
-            alert('Por favor, conecta MetaMask.');
+            alert('Please connect MetaMask.');
             initializePage();
         } else {
-            userAccount = accounts[0];
-            if (accountInfo) accountInfo.textContent = userAccount;
+            BlockchainService.account = accounts[0];
+            if (accountInfo) accountInfo.textContent = BlockchainService.account;
             
             const isContractOwner = await checkOwnership();
             if (!isContractOwner) {
-                const isAdmin = await operationsContract.methods.isAdmin(userAccount).call();
+                const isAdmin = await BlockchainService.callContractMethod(
+                    BlockchainService.operationsContract.methods.isAdmin(BlockchainService.account)
+                );
                 if (!isAdmin) {
-                    alert("La nueva cuenta no tiene permisos de administrador");
+                    alert("New account doesn't have admin permissions");
                     initializePage();
                     return;
                 }
@@ -293,10 +219,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (addAccountButton) {
         addAccountButton.addEventListener('click', async () => {
             const address = addAccountInput.value.trim();
-            if (web3.utils.isAddress(address)) {
+            if (BlockchainService.web3.utils.isAddress(address)) {
                 await addUserToWhitelist(address);
             } else {
-                alert('Por favor, ingresa una dirección de Ethereum válida');
+                alert('Please enter a valid Ethereum address');
             }
         });
     }
@@ -305,9 +231,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         refreshBalance.addEventListener('click', updateContractBalance);
     }
 
-    // Actualizar balance cada 30 segundos
+    // Global functions for table actions
+    window.handleToggleAdmin = async (address, makeAdmin) => {
+        try {
+            const method = makeAdmin ? 
+                BlockchainService.operationsContract.methods.addAdmin(address) : 
+                BlockchainService.operationsContract.methods.removeAdmin(address);
+            
+            await BlockchainService.sendTransaction(method);
+            alert(makeAdmin ? 'Admin added' : 'Admin removed');
+            await loadUserList();
+        } catch (error) {
+            console.error('Admin modification error:', error);
+            alert('Error: ' + error.message);
+        }
+    };
+
+    window.handleDeleteUser = async (address) => {
+        try {
+            const method = BlockchainService.operationsContract.methods.removeFromWhitelist(address);
+            await BlockchainService.sendTransaction(method);
+            alert('User deleted');
+            await loadUserList();
+        } catch (error) {
+            console.error('User deletion error:', error);
+            alert('Error: ' + error.message);
+        }
+    };
+
+    window.handleSendBalance = async (address) => {
+        try {
+            const method = BlockchainService.operationsContract.methods.sendBalance(address);
+            await BlockchainService.sendTransaction(method);
+            alert('Balance sent successfully');
+            await updateContractBalance();
+        } catch (error) {
+            console.error('Balance sending error:', error);
+            alert('Error: ' + error.message);
+        }
+    };
+
+    // Update balance periodically
     setInterval(() => {
-        if (web3 && userAccount) {
+        if (BlockchainService.web3 && BlockchainService.account) {
             updateContractBalance();
         }
     }, 30000);
