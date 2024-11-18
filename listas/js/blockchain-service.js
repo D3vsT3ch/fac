@@ -1,4 +1,5 @@
 // Blockchain service for managing Web3 interactions
+//blockchain-service.js
 window.BlockchainService = {
     web3: null,
     account: null,

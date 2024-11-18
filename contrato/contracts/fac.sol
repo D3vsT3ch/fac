@@ -1,20 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@opengsn/contracts/src/BaseRelayRecipient.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract DocumentManager is BaseRelayRecipient {
-    address public immutable owner;
-    uint256 public contractBalance;
-    uint256 public establishedAmount;
+contract Fac is Initializable {
+    address public owner;
 
-    mapping(address => bool) private adminList;
-    mapping(address => bool) private whiteList;
+    struct User {
+        address userAddress;
+        string name;
+    }
+
+    mapping(address => User) private adminList;
+    mapping(address => User) private whiteList;
     mapping(bytes32 => Document) private documents;
-    
+
     bytes32[] private documentHashes;
-    address[] private adminAddresses;
-    address[] private whitelistedAddresses;
 
     struct Document {
         uint256 timestamp;
@@ -22,140 +23,84 @@ contract DocumentManager is BaseRelayRecipient {
         address uploader;
     }
 
-    event AdminAdded(address indexed admin);
+    event AdminAdded(address indexed admin, string name);
     event AdminRemoved(address indexed admin);
-    event UserWhitelisted(address indexed user);
+    event UserWhitelisted(address indexed user, string name);
     event UserRemovedFromWhitelist(address indexed user);
-    event AmountEstablished(uint256 amount);
     event DocumentSaved(bytes32 indexed docHash, address indexed uploader, uint256 timestamp);
-    event BalanceSent(address indexed to, uint256 amount);
-    event FundsDeposited(address indexed from, uint256 amount);
-    event GasRefunded(address indexed user, uint256 amount);
 
     modifier onlyOwner() {
-        require(_msgSender() == owner, "Solo el propietario puede realizar esta accion");
+        require(msg.sender == owner, unicode"Solo el propietario puede realizar esta acción");
         _;
     }
 
     modifier onlyAdmin() {
-        require(adminList[_msgSender()], "Solo administradores pueden realizar esta accion");
+        require(adminList[msg.sender].userAddress != address(0), unicode"Solo administradores pueden realizar esta acción");
         _;
     }
 
     modifier onlyWhitelisted() {
-        require(whiteList[_msgSender()], "Usuario no esta en la lista blanca");
+        require(whiteList[msg.sender].userAddress != address(0), unicode"Usuario no está en la lista blanca");
         _;
     }
 
-    constructor(address _trustedForwarder) {
-        owner = msg.sender; // Usamos msg.sender en el constructor
-        _setTrustedForwarder(_trustedForwarder);
-        
-        // Inicializar el owner como admin y whitelisted
-        adminList[msg.sender] = true;
-        adminAddresses.push(msg.sender);
-        whiteList[msg.sender] = true;
-        whitelistedAddresses.push(msg.sender);
+    // Reemplazo del constructor
+    function initialize() public initializer {
+        owner = msg.sender;
+        whiteList[owner] = User(owner, "Propietario");
     }
 
-    receive() external payable {
-        contractBalance += msg.value;
-        emit FundsDeposited(msg.sender, msg.value);
+    function addAdmin(address _admin, string memory _name) public onlyOwner {
+        require(adminList[_admin].userAddress == address(0), unicode"Ya es administrador");
+        require(whiteList[_admin].userAddress != address(0), unicode"El usuario debe estar en la whitelist");
+
+        adminList[_admin] = User(_admin, _name);
+        emit AdminAdded(_admin, _name);
     }
 
-    fallback() external payable {
-        contractBalance += msg.value;
-        emit FundsDeposited(msg.sender, msg.value);
-    }
+    function removeAdmin(address _admin) public onlyOwner {
+        require(_admin != owner, unicode"No se puede eliminar al propietario");
+        require(adminList[_admin].userAddress != address(0), unicode"No es administrador");
 
-    function deposit() external payable {
-        require(msg.value > 0, "El valor debe ser mayor que 0");
-        contractBalance += msg.value;
-        emit FundsDeposited(_msgSender(), msg.value);
-    }
-
-    function getContractBalance() external view returns (uint256) {
-        return address(this).balance;
-    }
-
-    function addAdmin(address _admin) external onlyOwner {
-        require(!adminList[_admin], "Ya es administrador");
-        adminList[_admin] = true;
-        adminAddresses.push(_admin);
-        emit AdminAdded(_admin);
-    }
-
-    function removeAdmin(address _admin) external onlyOwner {
-        require(_admin != owner, "No se puede eliminar al propietario");
-        require(adminList[_admin], "No es administrador");
-        adminList[_admin] = false;
-        for (uint i = 0; i < adminAddresses.length; i++) {
-            if (adminAddresses[i] == _admin) {
-                adminAddresses[i] = adminAddresses[adminAddresses.length - 1];
-                adminAddresses.pop();
-                break;
-            }
-        }
+        delete adminList[_admin];
         emit AdminRemoved(_admin);
     }
 
-    function addToWhitelist(address _user) external onlyAdmin {
-        require(!whiteList[_user], "Usuario ya esta en la lista blanca");
-        whiteList[_user] = true;
-        whitelistedAddresses.push(_user);
-        emit UserWhitelisted(_user);
+    function addToWhitelist(address _user, string memory _name) public onlyAdmin {
+        require(whiteList[_user].userAddress == address(0), unicode"Usuario ya está en la lista blanca");
+
+        whiteList[_user] = User(_user, _name);
+        emit UserWhitelisted(_user, _name);
     }
 
-    function removeFromWhitelist(address _user) external onlyAdmin {
-        require(_user != owner, "No se puede eliminar al propietario");
-        require(whiteList[_user], "Usuario no esta en la lista blanca");
-        whiteList[_user] = false;
-        for (uint i = 0; i < whitelistedAddresses.length; i++) {
-            if (whitelistedAddresses[i] == _user) {
-                whitelistedAddresses[i] = whitelistedAddresses[whitelistedAddresses.length - 1];
-                whitelistedAddresses.pop();
-                break;
-            }
-        }
+    function removeFromWhitelist(address _user) public onlyAdmin {
+        require(_user != owner, unicode"No se puede eliminar al propietario");
+        require(whiteList[_user].userAddress != address(0), unicode"Usuario no está en la lista blanca");
+
+        delete whiteList[_user];
         emit UserRemovedFromWhitelist(_user);
+
+        // Si es administrador, también lo eliminamos de la lista de administradores
+        if (adminList[_user].userAddress != address(0)) {
+            removeAdmin(_user);
+        }
     }
 
-    function setEstablishedAmount(uint256 _amount) external onlyAdmin {
-        establishedAmount = _amount;
-        emit AmountEstablished(_amount);
-    }
-
-    function isAdmin(address _user) external view returns (bool) {
-        return adminList[_user];
-    }
-
-    function isWhitelisted(address _user) external view returns (bool) {
-        return whiteList[_user];
-    }
-
-    function getAdmins() external view returns (address[] memory) {
-        return adminAddresses;
-    }
-
-    function getWhitelistedUsers() external view returns (address[] memory) {
-        return whitelistedAddresses;
-    }
-
-    function saveDocument(string memory _data) external onlyWhitelisted returns (bytes32) {
-        bytes32 docHash = keccak256(abi.encodePacked(_data, block.timestamp, _msgSender()));
-        documents[docHash] = Document(block.timestamp, _data, _msgSender());
+    function saveDocument(string memory _data) public onlyWhitelisted returns (bytes32) {
+        bytes32 docHash = keccak256(abi.encodePacked(_data, block.timestamp, msg.sender));
+        documents[docHash] = Document(block.timestamp, _data, msg.sender);
         documentHashes.push(docHash);
-        emit DocumentSaved(docHash, _msgSender(), block.timestamp);
+        emit DocumentSaved(docHash, msg.sender, block.timestamp);
         return docHash;
     }
 
-    function getDocument(bytes32 _docHash) external view returns (uint256, string memory, address) {
+    function getDocument(bytes32 _docHash) public view returns (uint256, string memory, address) {
         Document memory doc = documents[_docHash];
-        require(doc.timestamp != 0, "Documento no existe");
+        require(doc.timestamp != 0, unicode"Documento no existe");
         return (doc.timestamp, doc.data, doc.uploader);
     }
 
-    function getAllDocuments() external view returns (
+    function getAllDocuments() public view returns (
         bytes32[] memory,
         uint256[] memory,
         string[] memory,
@@ -177,20 +122,14 @@ contract DocumentManager is BaseRelayRecipient {
         return (documentHashes, timestamps, datas, uploaders);
     }
 
-    function sendBalance(address payable _to) external onlyOwner {
-        require(establishedAmount > 0, "Monto no establecido");
-        require(address(this).balance >= establishedAmount, "Saldo insuficiente");
-        _to.transfer(establishedAmount);
-        emit BalanceSent(_to, establishedAmount);
+    function isAdmin(address _user) public view returns (bool) {
+        return adminList[_user].userAddress != address(0);
     }
 
-    function refundGas(address user, uint256 amount) external onlyOwner {
-        require(address(this).balance >= amount, "Saldo insuficiente para reembolso");
-        payable(user).transfer(amount);
-        emit GasRefunded(user, amount);
+    function isWhitelisted(address _user) public view returns (bool) {
+        return whiteList[_user].userAddress != address(0);
     }
 
-    function versionRecipient() external pure override returns (string memory) {
-        return "2.2.6";
-    }
+    receive() external payable {}
+    fallback() external payable {}
 }

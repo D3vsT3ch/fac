@@ -1,3 +1,5 @@
+//deposit.js
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Elementos del DOM permanecen igual
     const connectButton = document.getElementById('connectButton');

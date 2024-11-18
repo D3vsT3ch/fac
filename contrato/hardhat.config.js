@@ -1,10 +1,20 @@
 require("@nomicfoundation/hardhat-toolbox");
 
+require("@nomicfoundation/hardhat-ethers");
+require('@openzeppelin/hardhat-upgrades');
+
+const {config} = require("dotenv") 
+const {resolve} = require("path")
+config({path:resolve(__dirname,"./.env")})
+ 
+/** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
-  solidity: "0.8.0",
-  networks: {
-    localhost: {
-      url: "http://127.0.0.1:8545",
+  solidity: "0.8.27",
+  networks:{
+   
+    amoy: {
+      url: "https://rpc-amoy.polygon.technology",
+      accounts: [`0x${process.env.TESTNET_PRIVATE_KEY}`],
     },
-  },
+  }
 };

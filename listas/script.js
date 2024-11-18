@@ -1,3 +1,5 @@
+//script.js
+
 document.addEventListener('DOMContentLoaded', async () => {
     const connectButton = document.getElementById('connectButton');
     const accountInfo = document.getElementById('accountInfo');

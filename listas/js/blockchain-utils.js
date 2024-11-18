@@ -1,4 +1,5 @@
 // Blockchain utility functions
+//blockchain-utils.js
 window.BlockchainUtils = {
     async checkNetwork(web3) {
         try {

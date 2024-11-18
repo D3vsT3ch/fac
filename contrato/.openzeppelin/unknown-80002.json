@@ -1,0 +1,364 @@
+{
+  "manifestVersion": "3.2",
+  "proxies": [
+    {
+      "address": "0xAAA85378a9AfB9d11d885b236E0eD4DAced11715",
+      "txHash": "0x4556d6c61845f00c4f8cc66e22b27a985fd91d0444458e3d00b1ce5d38ac48a7",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x428D08e3AbDC397E33D52DaCe8C6Af2C9cA3dFEd",
+      "txHash": "0x1dbfdd742d1c3347c530d263e653ed7033e3a1e1dd6eefc407aea03fd0a041ff",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x0C2065D75F111fE43550CC6A285082a17E59400f",
+      "txHash": "0xf83f97150e4fc34bbd58a4a5ef5941ed338d2229cf52ceedbf35dce0a1e7188d",
+      "kind": "transparent"
+    }
+  ],
+  "impls": {
+    "554a98cf434d2a73fa4af61b6fc30af4daa2f5d74b6df8f2cb5bc496628f5559": {
+      "address": "0x36e8328530fd986287D5Dc071E3f20D5a762a72a",
+      "txHash": "0xc662d6e9a74de2452e152d44bd5d06ec61c91f3a65c911ebaa9a551a8d67ae38",
+      "layout": {
+        "solcVersion": "0.8.27",
+        "storage": [
+          {
+            "label": "owner",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_address",
+            "contract": "Fac",
+            "src": "contracts\\Fac.sol:7"
+          },
+          {
+            "label": "adminList",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_mapping(t_address,t_struct(User)392_storage)",
+            "contract": "Fac",
+            "src": "contracts\\Fac.sol:14"
+          },
+          {
+            "label": "whiteList",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_mapping(t_address,t_struct(User)392_storage)",
+            "contract": "Fac",
+            "src": "contracts\\Fac.sol:15"
+          },
+          {
+            "label": "documents",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_mapping(t_bytes32,t_struct(Document)417_storage)",
+            "contract": "Fac",
+            "src": "contracts\\Fac.sol:16"
+          },
+          {
+            "label": "documentHashes",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_array(t_bytes32)dyn_storage",
+            "contract": "Fac",
+            "src": "contracts\\Fac.sol:18"
+          }
+        ],
+        "types": {
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)77_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_bytes32)dyn_storage": {
+            "label": "bytes32[]",
+            "numberOfBytes": "32"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(User)392_storage)": {
+            "label": "mapping(address => struct Fac.User)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(Document)417_storage)": {
+            "label": "mapping(bytes32 => struct Fac.Document)",
+            "numberOfBytes": "32"
+          },
+          "t_string_storage": {
+            "label": "string",
+            "numberOfBytes": "32"
+          },
+          "t_struct(Document)417_storage": {
+            "label": "struct Fac.Document",
+            "members": [
+              {
+                "label": "timestamp",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "data",
+                "type": "t_string_storage",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "uploader",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(User)392_storage": {
+            "label": "struct Fac.User",
+            "members": [
+              {
+                "label": "userAddress",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "name",
+                "type": "t_string_storage",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    },
+    "b1e96c50b9d5cbeb53b6275932d55fd3c44e6d567e685b2a46070d4ed8891e08": {
+      "address": "0x1B6acAde8A14EbC478f97AF72210115d3392859c",
+      "txHash": "0x729273247d1e0d4e117e1f8bbfecc7ef36668b3a03d13f6e2c21f862767bcbf5",
+      "layout": {
+        "solcVersion": "0.8.27",
+        "storage": [
+          {
+            "label": "owner",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_address",
+            "contract": "Fac",
+            "src": "contracts\\Fac.sol:7"
+          },
+          {
+            "label": "adminList",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_mapping(t_address,t_struct(User)392_storage)",
+            "contract": "Fac",
+            "src": "contracts\\Fac.sol:14"
+          },
+          {
+            "label": "whiteList",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_mapping(t_address,t_struct(User)392_storage)",
+            "contract": "Fac",
+            "src": "contracts\\Fac.sol:15"
+          },
+          {
+            "label": "documents",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_mapping(t_bytes32,t_struct(Document)417_storage)",
+            "contract": "Fac",
+            "src": "contracts\\Fac.sol:16"
+          },
+          {
+            "label": "documentHashes",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_array(t_bytes32)dyn_storage",
+            "contract": "Fac",
+            "src": "contracts\\Fac.sol:18"
+          },
+          {
+            "label": "_trustedForwarder",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_address",
+            "contract": "ERC2771Recipient",
+            "src": "@opengsn\\contracts\\src\\ERC2771Recipient.sol:21"
+          }
+        ],
+        "types": {
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)77_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_bytes32)dyn_storage": {
+            "label": "bytes32[]",
+            "numberOfBytes": "32"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_struct(User)392_storage)": {
+            "label": "mapping(address => struct Fac.User)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(Document)417_storage)": {
+            "label": "mapping(bytes32 => struct Fac.Document)",
+            "numberOfBytes": "32"
+          },
+          "t_string_storage": {
+            "label": "string",
+            "numberOfBytes": "32"
+          },
+          "t_struct(Document)417_storage": {
+            "label": "struct Fac.Document",
+            "members": [
+              {
+                "label": "timestamp",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "data",
+                "type": "t_string_storage",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "uploader",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "2"
+              }
+            ],
+            "numberOfBytes": "96"
+          },
+          "t_struct(User)392_storage": {
+            "label": "struct Fac.User",
+            "members": [
+              {
+                "label": "userAddress",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "name",
+                "type": "t_string_storage",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

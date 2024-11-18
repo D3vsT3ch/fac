@@ -22,10 +22,8 @@ contract DocumentManager {
     event AdminAdded(address indexed admin);
     event AdminRemoved(address indexed admin);
     event UserWhitelisted(address indexed user);
-    event UserRemovedFromWhitelist(address indexed user);
-    event AmountEstablished(uint256 amount);
+    event UserRemovedFromWhitelist(address indexed user); 
     event DocumentSaved(bytes32 indexed docHash, address indexed uploader, uint256 timestamp);
-    event BalanceSent(address indexed to, uint256 amount);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Solo el propietario puede realizar esta accion");
@@ -92,10 +90,7 @@ contract DocumentManager {
         emit UserRemovedFromWhitelist(_user);
     }
 
-    function setEstablishedAmount(uint256 _amount) public onlyAdmin {
-        establishedAmount = _amount;
-        emit AmountEstablished(_amount);
-    }
+    
 
     function isAdmin(address _user) public view returns (bool) {
         return adminList[_user];
@@ -149,13 +144,7 @@ contract DocumentManager {
         return (documentHashes, timestamps, datas, uploaders);
     }
 
-    function sendBalance(address payable _to) public onlyOwner {
-        require(establishedAmount > 0, "Monto no establecido");
-        require(address(this).balance >= establishedAmount, "Saldo insuficiente");
-        _to.transfer(establishedAmount);
-        emit BalanceSent(_to, establishedAmount);
-    }
-
+   
     receive() external payable {}
     fallback() external payable {}
 }

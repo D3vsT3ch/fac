@@ -1,4 +1,4 @@
-// ABI del contrato FacOperations
+//contato.js
 const contractABI = [
   {
     "inputs": [{"internalType": "address","name": "_trustedForwarder","type": "address"}],
@@ -554,8 +554,8 @@ const fundsContractABI = [
 ];
 
 // Contract addresses
-const contractAddress = '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512';
-const fundsContractAddress = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+const contractAddress = '0xc6e7DF5E7b4f2A278906862b61205850344D4e7d';
+const fundsContractAddress = '0x3Aa5ebB10DC797CAC828524e59A333d0A371443c';
 
 // OpenGSN addresses
 const trustedForwarder = '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9';

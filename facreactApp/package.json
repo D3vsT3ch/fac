@@ -1,0 +1,43 @@
+{
+  "name": "facreactapp",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@biconomy/mexa": "^3.0.6",
+    "@biconomy/sdk": "^0.0.10",
+    "@rhinestone/module-sdk": "^0.1.28",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.4",
+    "express": "^4.21.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "viem": "^2.21.47",
+    "web3": "^4.15.0"
+  },
+  "devDependencies": {
+    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
+    "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
+    "@eslint/js": "^9.13.0",
+    "@rollup/plugin-inject": "^5.0.5",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "buffer": "^6.0.3",
+    "eslint": "^9.13.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.14",
+    "globals": "^15.11.0",
+    "process": "^0.11.10",
+    "vite": "^5.4.10",
+    "vite-plugin-node-polyfills": "^0.22.0"
+  }
+}
