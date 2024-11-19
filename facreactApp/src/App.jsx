@@ -1,27 +1,25 @@
 // src/App.jsx
+
 import React, { useState, useEffect } from "react";
-import UserInfo from "./components/UserInfo"; // Asegúrate de la ruta correcta
+import { ethers } from "ethers";
+import UserInfo from "./components/UserInfo";
 import WalletConnect from "./components/WalletConnect";
 import Loader from "./components/Loader";
-import {
-  contractABI,
-  contractAddress,
-  requiredChainId,
-  rpcUrls,
-  chainName,
-  blockExplorerUrls,
-  nameCoint,
-  coint,
-} from "./contrato";
+import { contractABI, contractAddress } from "./contrato";
+import "./styles/App.css";
+import { requiredChainId, networkConfig } from "./config";
 import { initializeBiconomy } from "./biconomy";
 
 export default function App() {
-  const [userAccount, setUserAccount] = useState(null);
+  const [userAccount, setUserAccount] = useState(null); // Smart Account Address
+  const [userEOA, setUserEOA] = useState(null); // EOA Address
   const [loading, setLoading] = useState(false);
-  const [nexusClient, setNexusClient] = useState(null);
+  const [smartAccount, setSmartAccount] = useState(null);
+  const [signer, setSigner] = useState(null);
   const [transactionHash, setTransactionHash] = useState(null);
   const [dataJson, setDataJson] = useState(null);
-  const [status, setStatus] = useState('notSigned'); // Estados: notSigned, signing, signed, saving, saved, error
+  const [status, setStatus] = useState('notSigned');
+  const [isWhitelisted, setIsWhitelisted] = useState(false);
 
   // Parsear parámetros de la URL al montar el componente
   useEffect(() => {
@@ -30,11 +28,10 @@ export default function App() {
     if (dataParam) {
       console.log('Raw dataParam:', dataParam);
       try {
-        const decodedData = decodeURIComponent(dataParam);
+        // Asegúrate de que el JSON está correctamente codificado en la URL
+        const decodedData = JSON.parse(decodeURIComponent(dataParam));
         console.log('Decoded dataParam:', decodedData);
-        const parsedData = JSON.parse(decodedData);
-        console.log('Parsed dataJson:', parsedData);
-        setDataJson(parsedData);
+        setDataJson(decodedData);
       } catch (error) {
         console.error('Error al parsear el parámetro "data":', error);
         alert('El parámetro "data" en la URL no es válido.');
@@ -44,186 +41,133 @@ export default function App() {
     }
   }, []);
 
-  // Inicializar Biconomy al montar el componente
-  useEffect(() => {
-    const initBiconomy = async () => {
-      try {
-        const client = await initializeBiconomy();
-        setNexusClient(client);
-      } catch (error) {
-        console.error("Error al inicializar Biconomy:", error);
-      }
-    };
-
-    initBiconomy();
-  }, []);
-
-  // Manejar eventos de cambio de cuenta y red
-  useEffect(() => {
-    if (window.ethereum) {
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      window.ethereum.on('chainChanged', handleChainChanged);
-
-      return () => {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-        window.ethereum.removeListener('chainChanged', handleChainChanged);
-      };
-    }
-  }, [requiredChainId]);
-
-  const handleAccountsChanged = (accounts) => {
-    if (accounts.length === 0) {
-      console.log("Por favor, conecta una cuenta.");
-      setUserAccount(null);
-      setStatus('notSigned');
-    } else {
-      setUserAccount(accounts[0]);
-      setStatus('notSigned');
-    }
-  };
-
-  const handleChainChanged = async (_chainId) => {
-    console.log("Chain cambiado a:", _chainId);
-    await verifyNetwork();
-  };
-
-  // Verificar la red correcta
-  const verifyNetwork = async () => {
-    try {
-      const chainId = await window.ethereum.request({ method: "eth_chainId" });
-      const numericChainId = parseInt(chainId, 16);
-      console.log("Current chain ID:", numericChainId);
-
-      if (numericChainId !== requiredChainId) {
-        alert('Por favor, cambia a la red de prueba Polygon Amoy en MetaMask.');
-        setStatus('error');
-        await switchToNetwork();
-      } else {
-        console.log("Conectado a la red correcta.");
-        setStatus('notSigned');
-      }
-    } catch (error) {
-      console.error("Error al verificar la red:", error);
-      setStatus('error');
-    }
-  };
-
-  // Mostrar/ocultar animación de carga
-  const showLoading = (message) => {
-    setLoading(true);
-  };
-
-  const hideLoading = () => {
-    setLoading(false);
-  };
-
-  // Cambiar de red a Polygon Amoy
-  const switchToNetwork = async () => {
-    try {
-      await window.ethereum.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: `0x${requiredChainId.toString(16)}` }],
-      });
-    } catch (error) {
-      if (error.code === 4902) {
-        try {
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [
-              {
-                chainId: `0x${requiredChainId.toString(16)}`,
-                chainName,
-                rpcUrls: [rpcUrls],
-                nativeCurrency: {
-                  name: nameCoint,
-                  symbol: coint,
-                  decimals: 18,
-                },
-                blockExplorerUrls: [blockExplorerUrls],
-              },
-            ],
-          });
-        } catch (addError) {
-          console.error("Error al agregar la red:", addError);
-          setStatus('error');
-        }
-      } else {
-        console.error("Error al cambiar/agregar la red:", error);
-        setStatus('error');
-      }
-    }
-  };
-
-  // Conectar MetaMask y Biconomy
-  const connectMetamask = async () => {
+  // Función para conectar la wallet del usuario e inicializar Biconomy
+  const connectWallet = async () => {
     if (window.ethereum) {
       try {
-        const accounts = await window.ethereum.request({
-          method: "eth_requestAccounts",
-        });
-        const account = accounts[0];
-        setUserAccount(account);
-        setStatus('verifying');
+        // Solicitar acceso a la cuenta del usuario
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const userSigner = provider.getSigner();
 
-        // Verificar la red
-        const chainId = parseInt(
-          await window.ethereum.request({ method: "eth_chainId" }),
-          16
-        );
+        // Obtener la dirección EOA del usuario
+        const eoaAddress = await userSigner.getAddress();
+        setUserEOA(eoaAddress);
+        console.log("Dirección EOA del usuario:", eoaAddress);
+
+        // Verificar que el usuario esté en la red correcta
+        const { chainId } = await provider.getNetwork();
         if (chainId !== requiredChainId) {
-          await switchToNetwork();
-        } else {
-          setStatus('notSigned');
+          alert(`Por favor, conéctate a la red ${networkConfig.name}.`);
+          return;
         }
 
+        // Inicializar Biconomy con el signer del usuario
+        const sa = await initializeBiconomy(userSigner);
+
+        setSmartAccount(sa);
+        setSigner(userSigner);
+
+        const address = await sa.getAccountAddress();
+        setUserAccount(address);
+
+        console.log("Smart Account conectado:", address);
+
+        // Verificar si la Smart Account está en la lista blanca
+        await checkWhitelist(address);
       } catch (error) {
-        console.error("Error al conectar MetaMask:", error);
-        alert("No se pudo conectar a MetaMask.");
-        setStatus('error');
+        console.error("Error al conectar la wallet:", error);
       }
     } else {
-      alert("MetaMask no está instalado.");
+      alert("Por favor, instala MetaMask.");
     }
   };
 
-  // Enviar transacción patrocinada
-  const sendSponsoredTransaction = async () => {
-    if (!nexusClient || !dataJson || !userAccount) {
-      alert("Nexus Client, datos JSON o cuenta de usuario no está inicializado.");
+  // Función para verificar si la cuenta está en la whitelist
+  const checkWhitelist = async (account) => {
+    if (!signer) return;
+
+    try {
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      // Usa la dirección de la Smart Account para verificar la whitelist
+      const whitelisted = await contract.isWhitelisted(account);
+      setIsWhitelisted(whitelisted);
+      console.log(`¿Está en la whitelist? ${whitelisted}`);
+    } catch (error) {
+      console.error("Error al verificar la whitelist:", error);
+    }
+  };
+
+  // Función para enviar la transacción utilizando la Smart Account
+  const sendTransactionDirectly = async () => {
+    if (!smartAccount || !dataJson) {
+      alert("La Smart Account o los datos JSON no están inicializados.");
+      return;
+    }
+
+    if (!isWhitelisted) {
+      alert("Tu cuenta no está en la lista blanca.");
       return;
     }
 
     try {
+      console.log("Enviando transacción directamente desde Smart Account...");
       setStatus('signing');
       showLoading("Firmando la transacción...");
 
-      // Preparar los datos de la transacción
-      const tx = await nexusClient.sendTransaction({
-        calls: [
-          {
-            to: contractAddress,
-            data: nexusClient.account.interface.encodeFunctionData("saveDocument", [JSON.stringify(dataJson)]),
-            value: 0n,
-          },
-        ],
+      // Codificar la llamada a la función del contrato
+      const iface = new ethers.utils.Interface(contractABI);
+      const data = iface.encodeFunctionData('saveDocument', [JSON.stringify(dataJson)]);
+
+      // Crear y enviar la UserOperation
+      const userOp = await smartAccount.createUserOp({
+        target: contractAddress,
+        data: data,
       });
 
-      console.log("Transacción exitosa:", tx);
-      setTransactionHash(tx);
+      const response = await smartAccount.sendUserOp(userOp);
+      console.log("Respuesta de sendUserOp:", response);
+
+      const userOpHash = response.userOpHash;
+      setTransactionHash(userOpHash);
       setStatus('signed');
       hideLoading();
 
+      // Esperar a que la transacción sea confirmada (opcional)
+      const txReceipt = await response.wait();
+      console.log("Transacción confirmada:", txReceipt);
     } catch (error) {
       console.error("Error al enviar transacción:", error);
-      alert("Error: " + error.message);
+      let errorMessage = "Ocurrió un error al enviar la transacción.";
+      if (error.data && error.data.message) {
+        errorMessage = error.data.message;
+      } else if (error.reason) {
+        errorMessage = error.reason;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      alert("Error: " + errorMessage);
       setStatus('error');
       hideLoading();
     }
   };
 
+  // Función para mostrar el loader
+  const showLoading = (message) => {
+    console.log("Mostrando loader:", message);
+    setLoading(true);
+  };
+
+  // Función para ocultar el loader
+  const hideLoading = () => {
+    console.log("Ocultando loader");
+    setLoading(false);
+  };
+
   return (
     <div id="signBody">
-      <UserInfo userAccount={userAccount} /> {/* Mover fuera de la container si es necesario */}
+      <UserInfo userEOA={userEOA} userAccount={userAccount} className={userEOA ? 'visible' : ''} />
+      {!userEOA && <WalletConnect onConnect={connectWallet} />}
       <div className="container">
         <img src="/images/logo.svg" alt="logo" />
         <div className="title">Plataforma Destructrong</div>
@@ -245,16 +189,21 @@ export default function App() {
               </div>
             )}
           </div>
-          <WalletConnect onConnect={connectMetamask} />
-          {userAccount && dataJson && status === 'notSigned' && (
-            <button
-              id="actionButton"
-              onClick={sendSponsoredTransaction}
-            >
-              Firmar
-            </button>
+          {/* Botones de acción */}
+          {userEOA && dataJson && isWhitelisted && status === 'notSigned' && (
+            <>
+              <button
+                id="actionButton"
+                onClick={sendTransactionDirectly}
+              >
+                Firmar
+              </button>
+            </>
           )}
-          {userAccount && dataJson && status === 'signed' && (
+          {userEOA && dataJson && !isWhitelisted && (
+            <p style={{ color: 'red' }}>Tu cuenta no está en la lista blanca.</p>
+          )}
+          {userEOA && dataJson && status === 'signed' && (
             <button
               id="actionButton"
               disabled

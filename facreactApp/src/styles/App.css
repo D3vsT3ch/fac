@@ -104,24 +104,25 @@ body {
   width: 193px;
 }
 
-#userCointainer {
-  background-color: rgba(0, 19, 38, 0.8);
-  position: absolute;
-  top: 30px;
-  right: 0px;
-  width: auto;
-  height: auto;
-  display: inline-block;
-  padding: 10px;
-  padding-left: 15px;
-  border-top-left-radius: 30px;
-  border-bottom-left-radius: 30px;
-  opacity: 0;
+#userContainer {
+ 
+    background-color: rgba(0,19,38,0.8);
+    position: absolute;
+    top: 30px;
+    right: 0px;
+    width: auto;
+    height: auto;
+    display: inline-block;
+    padding: 10px;
+    padding-left: 15px;
+    border-top-left-radius: 30px;
+    border-bottom-left-radius: 30px;
+   
 }
 
-#userCointainer img,
-#userCointainer strong,
-#userCointainer div {
+#userContainer img,
+#userContainer strong,
+#userContainer div {
   display: inline-block;
   vertical-align: middle;
 }

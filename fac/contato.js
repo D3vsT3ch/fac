@@ -375,7 +375,7 @@ const contractABI = [
     }
   ]
 
-const contractAddress = '0x0c2065d75f111fe43550cc6a285082a17e59400f'; // Reemplaza con la dirección correcta
+const contractAddress = '0x56b2f65f9c577876619d488fdbd71fdfe492e087'; // Reemplaza con la dirección correcta
 const apiKey = "ftkZJ8BXp.137da2f5-4f23-48ef-bc58-c40a44475f9b"; // Reemplaza con tu clave de API de Biconomy
 const requiredChainId = 80002;
 const rpcUrls= "https://rpc-amoy.polygon.technology";

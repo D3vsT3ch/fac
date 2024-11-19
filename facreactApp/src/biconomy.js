@@ -1,39 +1,27 @@
 // src/biconomy.js
-import { createNexusClient, createBicoPaymasterClient } from "@biconomy/sdk";
-import { baseSepolia } from "viem/chains"; 
-import { http } from "viem"; 
-import { privateKeyToAccount } from "viem/accounts";
-import {
-  contractABI,
-  contractAddress,
-  requiredChainId,
-  rpcUrls,
-  chainName,
-  blockExplorerUrls,
-  nameCoint,
-  coint,
-  paymasterUrl,
-  paymasterId,
-  bundlerUrl,
-} from "./contrato";
+import { createSmartAccountClient } from "@biconomy/account";
+import { networkConfig } from "./config";
 
-export const initializeBiconomy = async () => {
+console.log("Inicializando Biconomy con @biconomy/account");
+
+export const initializeBiconomy = async (userSigner) => {
   try {
-    const privateKey = import.meta.env.VITE_PRIVATE_KEY;
-    const account = privateKeyToAccount(`0x${privateKey}`);
+    if (!userSigner) {
+      throw new Error("El signer del usuario no está definido.");
+    }
 
-    const nexusClient = await createNexusClient({
-      signer: account,
-      chain: baseSepolia,
-      transport: http(),
-      bundlerTransport: http(bundlerUrl),
-      paymaster: createBicoPaymasterClient({ paymasterUrl }),
+    const smartAccount = await createSmartAccountClient({
+      signer: userSigner, // Usar el signer del usuario
+      bundlerUrl: import.meta.env.VITE_BUNDLER_URL,
+      paymasterApiKey: import.meta.env.VITE_BICONOMY_API_KEY,
+      chainId: networkConfig.id,
+      rpcUrl: networkConfig.rpcUrls[0],
     });
 
-    const smartAccountAddress = await nexusClient.account.address;
-    console.log("Smart Account Address:", smartAccountAddress);
+    const smartAccountAddress = await smartAccount.getAccountAddress();
+    console.log("Dirección de Smart Account:", smartAccountAddress);
 
-    return nexusClient;
+    return smartAccount;
   } catch (error) {
     console.error("Error al inicializar Biconomy:", error);
     throw error;

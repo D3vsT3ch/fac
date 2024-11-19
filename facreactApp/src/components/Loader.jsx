@@ -1,5 +1,6 @@
 // src/components/Loader.jsx
 import React from "react";
+import PropTypes from 'prop-types';
 
 export default function Loader({ message }) {
   return (
@@ -9,3 +10,7 @@ export default function Loader({ message }) {
     </div>
   );
 }
+
+Loader.propTypes = {
+  message: PropTypes.string,
+};

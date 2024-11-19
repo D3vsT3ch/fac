@@ -40,3 +40,35 @@
 .read-the-docs {
   color: #888;
 }
+
+
+
+
+
+
+/* src/styles/App.css */
+
+#userContainer {
+  background-color: rgba(0, 19, 38, 0.8);
+  position: absolute;
+  top: 30px;
+  right: 0px;
+  padding: 10px 15px;
+  border-top-left-radius: 30px;
+  border-bottom-left-radius: 30px;
+  opacity: 0; /* Inicialmente oculto */
+  transition: opacity 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: white;
+}
+
+#userContainer img {
+  width: 30px; /* Ajusta según tus necesidades */
+  height: 30px;
+}
+
+#userContainer.visible {
+  opacity: 1;
+}
