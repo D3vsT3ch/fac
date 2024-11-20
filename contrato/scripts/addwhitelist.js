@@ -1,14 +1,14 @@
 const { ethers } = require('hardhat');
 
 async function main() {
-  const facAddress = '0x2e168E434AB3F8DE16B6f5C88550370Cba4d61ef'; // Reemplaza con la dirección real
+  const facAddress = '0xC62c9b0007BAFD86632ac3032D3508Ad9C52124a'; // Reemplaza con la dirección real
   const Fac = await ethers.getContractFactory('Fac');
   const fac = Fac.attach(facAddress);
 
   const [owner] = await ethers.getSigners();
 
   // Agregar un usuario a la whitelist
-  const userAddress = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'; // Dirección del usuario
+  const userAddress = '0x668019d35aA5a4451CD32363C63c71F0A9Bf3144'; // Dirección del usuario
   const userName = 'Cliente';
 
   const tx = await fac.connect(owner).addToWhitelist(userAddress, userName);

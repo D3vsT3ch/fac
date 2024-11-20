@@ -68,7 +68,7 @@ export default function AdminPanel() {
         console.log(`¿Eres el propietario? ${isOwner}`);
 
         // Obtener la lista de whitelist y admins
-        await fetchWhitelist(contract);
+        await fetchWhitelist(contract, lowerOwnerAddress);
       } catch (error) {
         console.error("Error al conectar la wallet:", error);
         alert(`Error al conectar la wallet: ${error.message}`);
@@ -76,6 +76,33 @@ export default function AdminPanel() {
     } else {
       alert("Por favor, instala MetaMask.");
     }
+  };
+
+  // Función para enviar transacciones utilizando Biconomy
+  const sendTransactionWithBiconomy = async (to, data) => {
+    if (!smartAccount) {
+      throw new Error("La Smart Account no está inicializada.");
+    }
+
+    const tx = {
+      to,
+      data,
+      // Puedes agregar más campos como `value` si es necesario
+    };
+
+    const userOpResponse = await smartAccount.sendTransaction(tx);
+    const { transactionHash } = await userOpResponse.waitForTxHash();
+    console.log("Transaction Hash:", transactionHash);
+
+    // Esperar a que la transacción sea confirmada
+    const userOpReceipt = await userOpResponse.wait();
+    if (userOpReceipt.success !== true && userOpReceipt.success !== "true") {
+      throw new Error("La transacción no fue exitosa.");
+    }
+
+    console.log("UserOp receipt:", userOpReceipt);
+    console.log("Transaction receipt:", userOpReceipt.receipt);
+    return userOpReceipt.receipt;
   };
 
   // Función para mostrar el loader
@@ -128,11 +155,11 @@ export default function AdminPanel() {
   };
 
   // Función para obtener la whitelist de eventos
-  const fetchWhitelist = async (contract) => {
+  const fetchWhitelist = async (contract, ownerAddress) => { // Recibir ownerAddress como parámetro
     try {
       showLoading("Cargando lista blanca...");
       console.log("Obteniendo eventos UserWhitelisted y UserRemovedFromWhitelist...");
-      
+
       // Obtener todos los eventos de UserWhitelisted y UserRemovedFromWhitelist
       const filterWhitelisted = contract.filters.UserWhitelisted();
       const filterRemoved = contract.filters.UserRemovedFromWhitelist();
@@ -170,8 +197,8 @@ export default function AdminPanel() {
       const adminSet = await fetchAdmins(contract);
 
       // Incluir al propietario como administrador
-      if (owner) {
-        adminSet.add(owner.toLowerCase());
+      if (ownerAddress) {
+        adminSet.add(ownerAddress.toLowerCase());
       }
 
       console.log("Lista de Administradores Actualizada:", adminSet);
@@ -192,7 +219,7 @@ export default function AdminPanel() {
     }
   };
 
-  // Función para agregar un nuevo usuario a la whitelist
+  // Función para agregar un nuevo usuario a la whitelist usando Biconomy
   const addUserToWhitelist = async () => {
     if (!newUser || !userName) {
       alert("Por favor, proporciona la dirección y el nombre del usuario.");
@@ -204,45 +231,109 @@ export default function AdminPanel() {
       return;
     }
 
+    if (!smartAccount) {
+      alert("La Smart Account no está inicializada.");
+      return;
+    }
+
     try {
       showLoading("Agregando usuario a la whitelist...");
-      const contractWithSigner = new ethers.Contract(contractAddress, contractABI, signer);
-      const tx = await contractWithSigner.addToWhitelist(newUser, userName);
-      await tx.wait();
-      console.log("Usuario agregado a la whitelist:", newUser);
+
+      // Codificar la llamada a la función del contrato
+      const iface = new ethers.utils.Interface(contractABI);
+      const data = iface.encodeFunctionData('addToWhitelist', [newUser, userName]);
+      console.log("Datos codificados de la transacción:", data);
+
+      // Enviar la transacción usando Biconomy
+      const receipt = await sendTransactionWithBiconomy(contractAddress, data);
+      console.log("Transaction receipt", receipt);
+
+      alert("Usuario agregado exitosamente a la whitelist.");
+
+      // Limpiar los campos de entrada
       setNewUser("");
       setUserName("");
+
       // Actualizar la whitelist
-      await fetchWhitelist(contractWithSigner);
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      await fetchWhitelist(contract, owner);
+
       hideLoading();
     } catch (error) {
       console.error("Error al agregar usuario a la whitelist:", error);
       hideLoading();
-      alert(`Error al agregar usuario: ${error.message}`);
+      let errorMessage = "Ocurrió un error al agregar el usuario.";
+      if (error.data && error.data.message) {
+        errorMessage = error.data.message;
+      } else if (error.reason) {
+        errorMessage = error.reason;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      alert("Error: " + errorMessage);
     }
   };
 
-  // Función para eliminar un usuario de la whitelist
+  // Función para eliminar un usuario de la whitelist y revocar admin si aplica
   const removeUserFromWhitelist = async (address) => {
     if (!address) return;
 
     try {
       showLoading("Eliminando usuario de la whitelist...");
-      const contractWithSigner = new ethers.Contract(contractAddress, contractABI, signer);
-      const tx = await contractWithSigner.removeFromWhitelist(address);
-      await tx.wait();
+
+      const lowerAddress = address.toLowerCase();
+
+      // Verificar si el usuario es admin
+      const isUserAdmin = whitelistedUsers.find(user => user.address === lowerAddress)?.isAdmin;
+
+      if (isUserAdmin) {
+        // Revocar rol de administrador primero
+        console.log("El usuario es administrador. Revocando rol de administrador...");
+
+        // Codificar la llamada a la función removeAdmin
+        const ifaceRemoveAdmin = new ethers.utils.Interface(contractABI);
+        const dataRemoveAdmin = ifaceRemoveAdmin.encodeFunctionData('removeAdmin', [address]);
+        console.log("Datos codificados para removeAdmin:", dataRemoveAdmin);
+
+        // Enviar la transacción para revocar admin usando Biconomy
+        await sendTransactionWithBiconomy(contractAddress, dataRemoveAdmin);
+        console.log("Rol de administrador revocado para:", address);
+      }
+
+      // Ahora, eliminar de la whitelist
+
+      // Codificar la llamada a la función removeFromWhitelist
+      const ifaceRemoveWhitelist = new ethers.utils.Interface(contractABI);
+      const dataRemoveWhitelist = ifaceRemoveWhitelist.encodeFunctionData('removeFromWhitelist', [address]);
+      console.log("Datos codificados para removeFromWhitelist:", dataRemoveWhitelist);
+
+      // Enviar la transacción para eliminar de la whitelist usando Biconomy
+      await sendTransactionWithBiconomy(contractAddress, dataRemoveWhitelist);
       console.log("Usuario eliminado de la whitelist:", address);
+
+      alert("Usuario eliminado exitosamente de la whitelist.");
+
       // Actualizar la whitelist
-      await fetchWhitelist(contractWithSigner);
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      await fetchWhitelist(contract, owner);
+
       hideLoading();
     } catch (error) {
       console.error("Error al eliminar usuario de la whitelist:", error);
       hideLoading();
-      alert(`Error al eliminar usuario: ${error.message}`);
+      let errorMessage = "Ocurrió un error al eliminar el usuario.";
+      if (error.data && error.data.message) {
+        errorMessage = error.data.message;
+      } else if (error.reason) {
+        errorMessage = error.reason;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      alert("Error: " + errorMessage);
     }
   };
 
-  // Función para conceder o revocar rol de administrador
+  // Función para conceder o revocar rol de administrador usando Biconomy
   const toggleAdmin = async (address, isCurrentlyAdmin) => {
     if (!address) return;
 
@@ -255,28 +346,42 @@ export default function AdminPanel() {
       if (isCurrentlyAdmin) {
         // Revocar rol de administrador
         showLoading("Revocando rol de administrador...");
-        const contractWithSigner = new ethers.Contract(contractAddress, contractABI, signer);
-        const tx = await contractWithSigner.removeAdmin(address);
-        await tx.wait();
+        const iface = new ethers.utils.Interface(contractABI);
+        const data = iface.encodeFunctionData('removeAdmin', [address]);
+        console.log("Datos codificados para removeAdmin:", data);
+
+        // Enviar la transacción usando Biconomy
+        await sendTransactionWithBiconomy(contractAddress, data);
         console.log("Rol de administrador revocado para:", address);
       } else {
         // Conceder rol de administrador
         showLoading("Concediendo rol de administrador...");
-        const contractWithSigner = new ethers.Contract(contractAddress, contractABI, signer);
-        // Obtener el nombre del usuario desde la whitelist
-        const user = whitelistedUsers.find(user => user.address.toLowerCase() === address.toLowerCase());
-        const name = user ? user.name : "Administrador";
-        const tx = await contractWithSigner.addAdmin(address, name);
-        await tx.wait();
+        const iface = new ethers.utils.Interface(contractABI);
+        const name = whitelistedUsers.find(user => user.address.toLowerCase() === address.toLowerCase())?.name || "Administrador";
+        const data = iface.encodeFunctionData('addAdmin', [address, name]);
+        console.log("Datos codificados para addAdmin:", data);
+
+        // Enviar la transacción usando Biconomy
+        await sendTransactionWithBiconomy(contractAddress, data);
         console.log("Rol de administrador concedido a:", address);
       }
+
       // Actualizar la whitelist
-      await fetchWhitelist(contractWithSigner);
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      await fetchWhitelist(contract, owner);
       hideLoading();
     } catch (error) {
       console.error(`Error al ${isCurrentlyAdmin ? "revocar" : "conceder"} rol de administrador:`, error);
       hideLoading();
-      alert(`Error al gestionar rol de administrador: ${error.message}`);
+      let errorMessage = `Ocurrió un error al ${isCurrentlyAdmin ? "revocar" : "conceder"} el rol de administrador.`;
+      if (error.data && error.data.message) {
+        errorMessage = error.data.message;
+      } else if (error.reason) {
+        errorMessage = error.reason;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      alert("Error: " + errorMessage);
     }
   };
 
@@ -355,13 +460,13 @@ export default function AdminPanel() {
                 Añadir nuevo usuario
               </label>
               <div className="containerInput">
-              <label htmlFor="addAccount" className="titleLabel labelW" >
-                Wallet
-              </label>
-              <label htmlFor="addAccount" className="titleLabel labelW">
-                Usuario
-              </label>
-              <br></br>
+                <label htmlFor="addAccount" className="titleLabel labelW" >
+                  Wallet
+                </label>
+                <label htmlFor="addAccount" className="titleLabel labelW">
+                  Usuario
+                </label>
+                <br></br>
                 <input
                   id="addAccount"
                   className="inputText"
@@ -379,7 +484,14 @@ export default function AdminPanel() {
                   onChange={(e) => setUserName(e.target.value)}
                   style={{ marginLeft: "10px" }}
                 />
-                 <img id="addAccountButton" className="iconAction" src="../images/icon_more.svg" />
+                <button
+                  id="addAccountButton"
+                  className="iconAction"
+                  onClick={addUserToWhitelist}
+                  style={{ marginLeft: "10px" }}
+                >
+                  <img src="../images/icon_more.svg" alt="Agregar" />
+                </button>
               </div>
             </div>
           </div>
@@ -415,12 +527,19 @@ export default function AdminPanel() {
                               {user.isAdmin ? "Revocar Admin" : "Conceder Admin"}
                             </button>
                           )}
+
                           <button
-                            className="action-button"
+                            className="iconAction"
+                            style={{ marginLeft: "10px" }}
+                          >
+                            <img src="../images/icon_group_users.svg" alt="Conceder rol de administrador" />
+                          </button>
+                          <button
+                            className="iconAction"
                             onClick={() => removeUserFromWhitelist(user.address)}
                             style={{ marginLeft: "10px" }}
                           >
-                            Eliminar
+                            <img src="../images/icon_delete.svg" alt="Eliminar" />
                           </button>
                         </td>
                       </tr>

@@ -1,14 +1,14 @@
 const { ethers } = require('hardhat');
 
 async function main() {
-  const facAddress = '0x2e168E434AB3F8DE16B6f5C88550370Cba4d61ef'; // Reemplaza con la dirección real
+  const facAddress = '0xC62c9b0007BAFD86632ac3032D3508Ad9C52124a'; // Reemplaza con la dirección real
   const Fac = await ethers.getContractFactory('Fac');
   const fac = Fac.attach(facAddress);
 
   const [owner] = await ethers.getSigners();
 
   // Agregar un administrador
-  const adminAddress = '0x2f80427CA71E485c49DF63f40Fd339E5adbF6eAc'; // Dirección del administrador
+  const adminAddress = '0x0788816536defa6a14779711c0b08b7f0edfe68b'; // Dirección del administrador
   const adminName = 'User';
 
   // Asegurarse de que el administrador esté en la whitelist
