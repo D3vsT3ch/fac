@@ -11,12 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const depositAmountInput = document.getElementById('depositAmount');
     const depositButton = document.getElementById('depositButton');
 
-    // Elementos para la gestión del monto
-    const establishedAmountInput = document.getElementById('establishedAmount');
-    const refreshAmountButton = document.getElementById('refreshAmountButton');
-    const setAmountButton = document.getElementById('setAmountButton');
-    const sendAmountInput = document.getElementById('sendAmount');
-
+   
     // Variables
     let web3;
     let userAccount;
@@ -156,16 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Función para cargar el monto establecido
-    async function loadEstablishedAmount() {
-        try {
-            const amountWei = await contractInstance.methods.establishedAmount().call();
-            const amountEther = web3.utils.fromWei(amountWei, 'ether');
-            establishedAmountInput.value = amountEther;
-        } catch (error) {
-            console.error('Error al cargar el monto establecido', error);
-        }
-    }
+    
 
     // Función para poblar la tabla de usuarios
     function populateTable(tableElement, userList) {
@@ -219,17 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 actionsContainer.appendChild(sendAmountIcon);
             }
 
-            // Toggle whitelist (el owner no puede ser modificado)
-            /*if (lowerUserAddress !== lowerOwnerAddress) {
-                const whitelistToggleIcon = document.createElement('img');
-                whitelistToggleIcon.src = user.isWhitelisted ? '../images/icon_remove_whitelist.svg' : '../images/icon_add_whitelist.svg';
-                whitelistToggleIcon.style.cursor = 'pointer';
-                whitelistToggleIcon.title = user.isWhitelisted ? 'Remover de whitelist' : 'Agregar a whitelist';
-                whitelistToggleIcon.onclick = () => toggleWhitelist(user.address, !user.isWhitelisted);
-                actionsContainer.appendChild(whitelistToggleIcon);
-            }*/
-
-            // Toggle admin (el owner no puede ser modificado)
+         
             if (lowerUserAddress !== lowerOwnerAddress) {
                 const adminToggleIcon = document.createElement('img');
                 adminToggleIcon.src = user.isAdmin ? '../images/icon_remove_admin.svg' : '../images/icon_group_users.svg';
@@ -253,16 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Función para enviar el monto establecido al usuario
-    async function sendAmountToUser(address) {
-        try {
-            await contractInstance.methods.sendBalance(address).send({ from: userAccount });
-            alert('Monto enviado exitosamente.');
-        } catch (error) {
-            console.error('Error al enviar el monto:', error);
-            alert('Error: ' + error.message);
-        }
-    }
+   
 
     // Función para alternar el estado en whitelist
     async function toggleWhitelist(address, add) {
@@ -329,34 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Evento para refrescar el monto establecido
-    if(refreshAmountButton != null){
-        refreshAmountButton.addEventListener('click', async () => {
-            await loadEstablishedAmount();
-            alert('Monto establecido actualizado.');
-        });
-    }
-
-    // Evento para establecer un nuevo monto
-    // Evento para establecer un nuevo monto
-setAmountButton.addEventListener('click', async () => {
-    const amount = sendAmountInput.value.trim();
-    if (!isNaN(amount) && amount > 0) {
-        try {
-            // Verificar si amount está en Ether o Wei
-            const amountWei = web3.utils.toWei(amount, 'ether');
-            await contractInstance.methods.setEstablishedAmount(amountWei).send({ from: userAccount });
-            alert('Monto establecido actualizado.');
-            sendAmountInput.value = '';
-            await loadEstablishedAmount();
-        } catch (error) {
-            console.error('Error al establecer el monto:', error);
-            alert('Error: ' + error.message);
-        }
-    } else {
-        alert('Por favor, ingresa un monto válido.');
-    }
-});
+   
 
 
     // Manejar cambios de cuenta

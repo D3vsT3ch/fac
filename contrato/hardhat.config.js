@@ -16,5 +16,9 @@ module.exports = {
       url: "https://rpc-amoy.polygon.technology",
       accounts: [`0x${process.env.TESTNET_PRIVATE_KEY}`],
     },
+    sepolia:{
+      url: "https://eth-sepolia.g.alchemy.com/v2/demo",
+      accounts: [`0x${process.env.TESTNET_PRIVATE_KEY}`],
+    }
   }
 };

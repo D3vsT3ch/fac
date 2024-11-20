@@ -1,5 +1,4 @@
 // src/App.jsx
-
 import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import UserInfo from "./components/UserInfo";
@@ -11,8 +10,8 @@ import { requiredChainId, networkConfig } from "./config";
 import { initializeBiconomy } from "./biconomy";
 
 export default function App() {
-  const [userAccount, setUserAccount] = useState(null); // Smart Account Address
-  const [userEOA, setUserEOA] = useState(null); // EOA Address
+  const [userAccount, setUserAccount] = useState(null); // Dirección de Smart Account
+  const [userEOA, setUserEOA] = useState(null); // Dirección EOA
   const [loading, setLoading] = useState(false);
   const [smartAccount, setSmartAccount] = useState(null);
   const [signer, setSigner] = useState(null);
@@ -57,6 +56,7 @@ export default function App() {
 
         // Verificar que el usuario esté en la red correcta
         const { chainId } = await provider.getNetwork();
+        console.log("Chain ID del proveedor:", chainId);
         if (chainId !== requiredChainId) {
           alert(`Por favor, conéctate a la red ${networkConfig.name}.`);
           return;
@@ -73,8 +73,7 @@ export default function App() {
 
         console.log("Smart Account conectado:", address);
 
-        // Verificar si la Smart Account está en la lista blanca
-        await checkWhitelist(address);
+        // No llamar a checkWhitelist aquí; lo haremos en useEffect
       } catch (error) {
         console.error("Error al conectar la wallet:", error);
       }
@@ -83,22 +82,7 @@ export default function App() {
     }
   };
 
-  // Función para verificar si la cuenta está en la whitelist
-  const checkWhitelist = async (account) => {
-    if (!signer) return;
-
-    try {
-      const contract = new ethers.Contract(contractAddress, contractABI, signer);
-      // Usa la dirección de la Smart Account para verificar la whitelist
-      const whitelisted = await contract.isWhitelisted(account);
-      setIsWhitelisted(whitelisted);
-      console.log(`¿Está en la whitelist? ${whitelisted}`);
-    } catch (error) {
-      console.error("Error al verificar la whitelist:", error);
-    }
-  };
-
-  // Función para enviar la transacción utilizando la Smart Account
+  // Función para enviar la transacción directamente
   const sendTransactionDirectly = async () => {
     if (!smartAccount || !dataJson) {
       alert("La Smart Account o los datos JSON no están inicializados.");
@@ -118,24 +102,30 @@ export default function App() {
       // Codificar la llamada a la función del contrato
       const iface = new ethers.utils.Interface(contractABI);
       const data = iface.encodeFunctionData('saveDocument', [JSON.stringify(dataJson)]);
+      console.log("Datos codificados de la transacción:", data);
 
-      // Crear y enviar la UserOperation
-      const userOp = await smartAccount.createUserOp({
-        target: contractAddress,
+      // Crear la transacción
+      const tx = {
+        to: contractAddress,
         data: data,
-      });
+      };
 
-      const response = await smartAccount.sendUserOp(userOp);
-      console.log("Respuesta de sendUserOp:", response);
+      // Enviar la transacción
+      const userOpResponse = await smartAccount.sendTransaction(tx);
+      const { transactionHash } = await userOpResponse.waitForTxHash();
+      console.log("Transaction Hash", transactionHash);
+      setTransactionHash(transactionHash);
 
-      const userOpHash = response.userOpHash;
-      setTransactionHash(userOpHash);
-      setStatus('signed');
+      const userOpReceipt = await userOpResponse.wait();
+      if (userOpReceipt.success === "true") {
+        console.log("UserOp receipt", userOpReceipt);
+        console.log("Transaction receipt", userOpReceipt.receipt);
+        setStatus('signed');
+      } else {
+        throw new Error("La transacción no fue exitosa.");
+      }
+
       hideLoading();
-
-      // Esperar a que la transacción sea confirmada (opcional)
-      const txReceipt = await response.wait();
-      console.log("Transacción confirmada:", txReceipt);
     } catch (error) {
       console.error("Error al enviar transacción:", error);
       let errorMessage = "Ocurrió un error al enviar la transacción.";
@@ -152,6 +142,39 @@ export default function App() {
     }
   };
 
+  // Función para verificar si la cuenta está en la whitelist
+  const checkWhitelist = async (account) => {
+    console.log("checkWhitelist llamada con account:", account);
+    if (!signer) {
+      console.log("Signer no está definido en checkWhitelist");
+      return;
+    }
+
+    try {
+      console.log("Verificando si la cuenta está en la whitelist:", account);
+      console.log("Usando contrato en la dirección:", contractAddress);
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      const whitelisted = await contract.isWhitelisted(account);
+      setIsWhitelisted(whitelisted);
+      console.log("Estado isWhitelisted actualizado a:", whitelisted);
+    } catch (error) {
+      console.error("Error al verificar la whitelist:", error);
+    }
+  };
+
+  // Monitorear cambios en isWhitelisted
+  useEffect(() => {
+    if (signer && userAccount) {
+      console.log("Llamando a checkWhitelist desde useEffect");
+      checkWhitelist(userAccount);
+    }
+  }, [signer, userAccount]);
+
+  // Monitorear cambios en isWhitelisted para logging
+  useEffect(() => {
+    console.log("El estado isWhitelisted cambió a:", isWhitelisted);
+  }, [isWhitelisted]);
+
   // Función para mostrar el loader
   const showLoading = (message) => {
     console.log("Mostrando loader:", message);
@@ -167,10 +190,9 @@ export default function App() {
   return (
     <div id="signBody">
       <UserInfo userEOA={userEOA} userAccount={userAccount} className={userEOA ? 'visible' : ''} />
-      {!userEOA && <WalletConnect onConnect={connectWallet} />}
+    
       <div className="container">
-        <img src="/images/logo.svg" alt="logo" />
-        <div className="title">Plataforma Destructrong</div>
+        <img src="/images/logo.svg" alt="logo" />      
         <div className="subTitle">Firma Electrónica</div>
 
         <div id="containerEnter">
@@ -190,6 +212,10 @@ export default function App() {
             )}
           </div>
           {/* Botones de acción */}
+          {console.log("Valores para renderizado del mensaje:")}
+          {console.log("userEOA:", userEOA)}
+          {console.log("dataJson:", dataJson)}
+          {console.log("isWhitelisted:", isWhitelisted)}
           {userEOA && dataJson && isWhitelisted && status === 'notSigned' && (
             <>
               <button
@@ -200,6 +226,7 @@ export default function App() {
               </button>
             </>
           )}
+            {!userEOA && <WalletConnect onConnect={connectWallet} />}
           {userEOA && dataJson && !isWhitelisted && (
             <p style={{ color: 'red' }}>Tu cuenta no está en la lista blanca.</p>
           )}
