@@ -173,7 +173,7 @@ body {
 }
 
 .inputText {
-  width: calc(100% - 85px);
+  width: calc(50% - 60px);
   height: 49px;
   background-color: #bbbdc4;
   padding: 10px;
@@ -382,4 +382,96 @@ button:disabled {
   border-radius: 30px;
   background-color: #001326;
   float: left;
+}
+
+.adminUser{
+  right: 100px;
+
+}
+
+.hide-on-load {
+  display: none;
+}
+
+/* Mostrar el contenedor */
+.visible {
+  display: block; /* Puedes ajustar a flex, grid, etc., según tu diseño */
+}
+
+
+/* src/styles/App.css */
+
+/* ...tu CSS existente... */
+
+/* Estilos para el botón de acción */
+.action-button {
+  padding: 8px 16px;
+  margin-left: 10px;
+  background-color: #007bff; /* Azul para acciones de administración */
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s ease;
+}
+
+.action-button:hover {
+  background-color: #0056b3;
+}
+
+/* Estilos para la tabla */
+#userTable th, #userTable td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #ddd;
+}
+
+#userTable th {
+  background-color: #001326;
+  color: white;
+  text-transform: uppercase;
+}
+
+#userTable tr:nth-child(even) {
+  background-color: #697881;
+}
+
+#userTable tr:hover {
+  background-color: #575757;
+}
+
+#userTable td {
+  color: white;
+  word-break: break-all;
+  text-align: center;
+}
+
+/* Clase para el mensaje de sin usuarios */
+#userTable td[colspan="4"] {
+  padding: 20px;
+  font-style: italic;
+  color: #ccc;
+}
+
+/* Ajustes para los inputs adicionales */
+.container-input {
+  display: flex;
+  align-items: center;
+}
+
+
+
+/* Asegurar que el botón "Eliminar" tenga un color distintivo */
+.action-button:nth-of-type(2) {
+  background-color: #dc3545; /* Rojo para eliminar */
+}
+
+.action-button:nth-of-type(2):hover {
+  background-color: #c82333;
+}
+
+.labelW{
+  display: inline-block;
+  width: calc(50% - 50px);
+  font-size: 20px;
 }
