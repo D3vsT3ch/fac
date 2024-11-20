@@ -1,20 +1,17 @@
-// main.jsx
-// Asigna `global` antes de cualquier otra importación
-window.global = window;
-
+// src/main.jsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
-import { Buffer } from 'buffer';
-import process from 'process';
+import App from './App.jsx';
+import { BrowserRouter } from 'react-router-dom';
+import { SmartAccountProvider } from './context/SmartAccountContext';
+import './styles/App.css';
 
-// Asigna `Buffer` y `process` al objeto global
-window.Buffer = Buffer;
-window.process = process;
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <App />
+    <BrowserRouter>
+      <SmartAccountProvider>
+        <App />
+      </SmartAccountProvider>
+    </BrowserRouter>
   </React.StrictMode>
 );

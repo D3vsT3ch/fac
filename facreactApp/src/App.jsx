@@ -1,13 +1,16 @@
 // src/App.jsx
-import React, { useState, useEffect } from "react";
+import React, { useContext, useState, useEffect } from "react";
+import { Routes, Route, Link } from "react-router-dom";
 import { ethers } from "ethers";
 import UserInfo from "./components/UserInfo";
 import WalletConnect from "./components/WalletConnect";
 import Loader from "./components/Loader";
+import AdminPanel from "./components/AdminPanel";
 import { contractABI, contractAddress } from "./contrato";
 import "./styles/App.css";
 import { requiredChainId, networkConfig } from "./config";
 import { initializeBiconomy } from "./biconomy";
+import { SmartAccountContext } from "./context/SmartAccountContext";
 
 export default function App() {
   const [userAccount, setUserAccount] = useState(null); // Dirección de Smart Account
@@ -190,58 +193,73 @@ export default function App() {
   return (
     <div id="signBody">
       <UserInfo userEOA={userEOA} userAccount={userAccount} className={userEOA ? 'visible' : ''} />
-    
+
       <div className="container">
-        <img src="/images/logo.svg" alt="logo" />      
+        <img src="/images/logo.svg" alt="logo" />
         <div className="subTitle">Firma Electrónica</div>
 
-        <div id="containerEnter">
-          <div id="online">
-            <span>En línea</span>
-            <img src="/images/icon_checked.svg" alt="online" />
-          </div>
-          <div id="jsonContent">
-            {transactionHash && <p>Transacción exitosa: {transactionHash}</p>}
-            {!dataJson && <p>No se proporcionó JSON en la URL.</p>}
-            {dataJson && (
-              <div>
-                {Object.entries(dataJson).map(([key, value]) => (
-                  <p key={key}><strong>{key}:</strong> {value}</p>
-                ))}
+        <nav>
+          <Link to="/">Enviar Documento</Link> | <Link to="/admin">Panel de Administración</Link>
+        </nav>
+
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <div id="containerEnter">
+                <div id="online">
+                  <span>En línea</span>
+                  <img src="/images/icon_checked.svg" alt="online" />
+                </div>
+                <div id="jsonContent">
+                  {transactionHash && <p>Transacción exitosa: {transactionHash}</p>}
+                  {!dataJson && <p>No se proporcionó JSON en la URL.</p>}
+                  {dataJson && (
+                    <div>
+                      {Object.entries(dataJson).map(([key, value]) => (
+                        <p key={key}><strong>{key}:</strong> {value}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* Botones de acción */}
+                {console.log("Valores para renderizado del mensaje:")}
+                {console.log("userEOA:", userEOA)}
+                {console.log("dataJson:", dataJson)}
+                {console.log("isWhitelisted:", isWhitelisted)}
+                {userEOA && dataJson && isWhitelisted && status === 'notSigned' && (
+                  <>
+                    <button
+                      id="actionButton"
+                      onClick={sendTransactionDirectly}
+                    >
+                      Firmar
+                    </button>
+                  </>
+                )}
+                {!userEOA && <WalletConnect onConnect={connectWallet} />}
+                {userEOA && dataJson && !isWhitelisted && (
+                  <p style={{ color: 'red' }}>Tu cuenta no está en la lista blanca.</p>
+                )}
+                {userEOA && dataJson && status === 'signed' && (
+                  <button
+                    id="actionButton"
+                    disabled
+                  >
+                    Transacción Enviada
+                  </button>
+                )}
+                {status === 'error' && (
+                  <p style={{ color: 'red' }}>Ocurrió un error. Inténtalo de nuevo.</p>
+                )}
               </div>
-            )}
-          </div>
-          {/* Botones de acción */}
-          {console.log("Valores para renderizado del mensaje:")}
-          {console.log("userEOA:", userEOA)}
-          {console.log("dataJson:", dataJson)}
-          {console.log("isWhitelisted:", isWhitelisted)}
-          {userEOA && dataJson && isWhitelisted && status === 'notSigned' && (
-            <>
-              <button
-                id="actionButton"
-                onClick={sendTransactionDirectly}
-              >
-                Firmar
-              </button>
-            </>
-          )}
-            {!userEOA && <WalletConnect onConnect={connectWallet} />}
-          {userEOA && dataJson && !isWhitelisted && (
-            <p style={{ color: 'red' }}>Tu cuenta no está en la lista blanca.</p>
-          )}
-          {userEOA && dataJson && status === 'signed' && (
-            <button
-              id="actionButton"
-              disabled
-            >
-              Transacción Enviada
-            </button>
-          )}
-          {status === 'error' && (
-            <p style={{ color: 'red' }}>Ocurrió un error. Inténtalo de nuevo.</p>
-          )}
-        </div>
+            }
+          />
+          <Route
+            path="/admin"
+            element={<AdminPanel smartAccount={smartAccount} signer={signer} userAccount={userAccount} />}
+          />
+        </Routes>
 
         {loading && <Loader message="Procesando..." />}
       </div>
