@@ -1,0 +1,113 @@
+/* src/components/AdminPanel.css */
+
+#adminContainer {
+    padding: 20px;
+    background-color: #f9f9f9;
+    min-height: 100vh;
+  }
+  
+  #headerSection .logo {
+    width: 150px;
+  }
+  
+  .centerText {
+    text-align: center;
+  }
+  
+  .titleAdmin {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+  }
+  
+  .containerInput {
+    display: flex;
+    align-items: center;
+  }
+  
+  .inputText {
+    flex: 1;
+    padding: 8px;
+    margin-right: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  
+  .iconAction {
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .containerTable table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+  
+  .containerTable th, .containerTable td {
+    border: 1px solid #ddd;
+    padding: 8px;
+  }
+  
+  .containerTable th {
+    background-color: #f2f2f2;
+    text-align: center;
+  }
+  
+  .containerTable td {
+    text-align: center;
+  }
+  
+  .containerTable td button {
+    padding: 5px 10px;
+    background-color: #ff4d4f;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .containerTable td button:hover {
+    background-color: #ff7875;
+  }
+  
+  .space50 {
+    height: 50px;
+  }
+  
+  .marginBottom50 {
+    margin-bottom: 50px;
+  }
+  
+  .flexH {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+  }
+  
+  .gap30 {
+    gap: 30px;
+  }
+  
+  .margin46 {
+    margin: 46px 0;
+  }
+  
+  .flex1 {
+    flex: 1;
+  }
+  
+  #connectButton {
+    padding: 10px 20px;
+    background-color: #001326;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  #connectButton:hover {
+    background-color: #33475b;
+  }
+  
