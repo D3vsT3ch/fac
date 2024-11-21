@@ -17,9 +17,7 @@ export default function DocumentosPanel() {
     const [loading, setLoading] = useState(false);
     const [smartAccount, setSmartAccount] = useState(null);
     const [signer, setSigner] = useState(null);
-    const [whitelistedUsers, setWhitelistedUsers] = useState([]);
-    const [newUser, setNewUser] = useState("");
-    const [userName, setUserName] = useState(""); // Nuevo estado para el nombre del usuario
+   
     const [owner, setOwner] = useState(null); // Estado para almacenar el owner
     const [isAdmin, setIsAdmin] = useState(false); // Estado para verificar si el usuario conectado es admin
     const [isTransactionPending, setIsTransactionPending] = useState(false); // Estado para gestionar transacciones pendientes
