@@ -20,7 +20,105 @@ export default function AdminPanel() {
   const [newUser, setNewUser] = useState("");
   const [userName, setUserName] = useState(""); // Nuevo estado para el nombre del usuario
   const [owner, setOwner] = useState(null); // Estado para almacenar el owner
-  const [isOwner, setIsOwner] = useState(false); // Estado para verificar si el usuario conectado es el owner
+  const [isAdmin, setIsAdmin] = useState(false); // Estado para verificar si el usuario conectado es admin
+  const [isTransactionPending, setIsTransactionPending] = useState(false); // Estado para gestionar transacciones pendientes
+
+  // Función para mostrar el loader
+  const showLoading = (message) => {
+    console.log("Mostrando loader:", message);
+    setLoading(true);
+  };
+
+  // Función para ocultar el loader
+  const hideLoading = () => {
+    console.log("Ocultando loader");
+    setLoading(false);
+  };
+
+  // Función optimizada para obtener administradores y whitelist
+  const fetchAdminAndWhitelist = async (contract, userEOAAddress, retries = 3, delayTime = 2000) => {
+    try {
+      showLoading("Cargando administradores y lista blanca...");
+      console.log("Obteniendo eventos AdminAdded, AdminRemoved, UserWhitelisted y UserRemovedFromWhitelist...");
+
+      // Definir los filtros de eventos
+      const filterAdminAdded = contract.filters.AdminAdded();
+      const filterAdminRemoved = contract.filters.AdminRemoved();
+      const filterUserWhitelisted = contract.filters.UserWhitelisted();
+      const filterUserRemoved = contract.filters.UserRemovedFromWhitelist();
+
+      // Ejecutar las consultas en paralelo
+      const [
+        eventsAdminAdded,
+        eventsAdminRemoved,
+        eventsUserWhitelisted,
+        eventsUserRemoved
+      ] = await Promise.all([
+        contract.queryFilter(filterAdminAdded, 0, "latest"),
+        contract.queryFilter(filterAdminRemoved, 0, "latest"),
+        contract.queryFilter(filterUserWhitelisted, 0, "latest"),
+        contract.queryFilter(filterUserRemoved, 0, "latest"),
+      ]);
+
+      console.log("Eventos AdminAdded:", eventsAdminAdded);
+      console.log("Eventos AdminRemoved:", eventsAdminRemoved);
+      console.log("Eventos UserWhitelisted:", eventsUserWhitelisted);
+      console.log("Eventos UserRemovedFromWhitelist:", eventsUserRemoved);
+
+      // Procesar eventos de administradores
+      const adminMap = new Map();
+      eventsAdminAdded.forEach(event => {
+        const { admin, name } = event.args;
+        adminMap.set(admin.toLowerCase(), name);
+      });
+
+      eventsAdminRemoved.forEach(event => {
+        const { admin } = event.args;
+        adminMap.delete(admin.toLowerCase());
+      });
+
+      const adminSet = new Set(adminMap.keys());
+      console.log("Lista de Administradores:", adminSet);
+
+      // Procesar eventos de la whitelist
+      const whitelistMap = new Map();
+      eventsUserWhitelisted.forEach(event => {
+        const { user, name } = event.args;
+        whitelistMap.set(user.toLowerCase(), name);
+      });
+
+      eventsUserRemoved.forEach(event => {
+        const { user } = event.args;
+        whitelistMap.delete(user.toLowerCase());
+      });
+
+      console.log("Mapa de Whitelist:", whitelistMap);
+
+      // Construir el array de usuarios con su estado de administrador
+      const whitelistArray = Array.from(whitelistMap.entries()).map(([address, name]) => ({
+        address,
+        name,
+        isAdmin: adminSet.has(address.toLowerCase()), // Determinar si es admin
+      }));
+
+      console.log("Whitelist Actualizada:", whitelistArray);
+
+      // Actualizar el estado
+      setWhitelistedUsers(whitelistArray);
+      setIsAdmin(adminSet.has(userEOAAddress.toLowerCase()));
+      setOwner(adminSet.has(userEOAAddress.toLowerCase()) ? userEOAAddress.toLowerCase() : owner);
+      hideLoading();
+    } catch (error) {
+      console.error("Error al obtener administradores y la whitelist:", error);
+      if (retries > 0) {
+        console.log(`Reintentando fetchAdminAndWhitelist... Intentos restantes: ${retries}`);
+        setTimeout(() => fetchAdminAndWhitelist(contract, userEOAAddress, retries - 1, delayTime), delayTime);
+      } else {
+        alert("No se pudo cargar administradores y la lista blanca después de varios intentos. Por favor, intenta de nuevo más tarde.");
+        hideLoading();
+      }
+    }
+  };
 
   // Función para conectar la wallet
   const connectWallet = async () => {
@@ -33,8 +131,9 @@ export default function AdminPanel() {
 
         // Obtener la dirección EOA del usuario
         const eoaAddress = await userSigner.getAddress();
-        setUserEOA(eoaAddress.toLowerCase());
-        console.log("Dirección EOA del usuario:", eoaAddress);
+        const lowerEoaAddress = eoaAddress.toLowerCase();
+        setUserEOA(lowerEoaAddress);
+        console.log("Dirección EOA del usuario:", lowerEoaAddress);
 
         // Verificar que el usuario esté en la red correcta
         const { chainId } = await provider.getNetwork();
@@ -61,14 +160,12 @@ export default function AdminPanel() {
         // Obtener el owner del contrato
         console.log("Intentando obtener el owner del contrato...");
         const ownerAddress = await contract.owner();
-        console.log("Owner Address obtenido:", ownerAddress);
         const lowerOwnerAddress = ownerAddress.toLowerCase();
         setOwner(lowerOwnerAddress);
-        setIsOwner(eoaAddress.toLowerCase() === lowerOwnerAddress);
-        console.log(`¿Eres el propietario? ${isOwner}`);
+        console.log("Owner Address obtenido:", lowerOwnerAddress);
 
-        // Obtener la lista de whitelist y admins
-        await fetchWhitelist(contract, lowerOwnerAddress);
+        // Obtener la lista de administradores y la whitelist
+        await fetchAdminAndWhitelist(contract, lowerEoaAddress);
       } catch (error) {
         console.error("Error al conectar la wallet:", error);
         alert(`Error al conectar la wallet: ${error.message}`);
@@ -105,120 +202,6 @@ export default function AdminPanel() {
     return userOpReceipt.receipt;
   };
 
-  // Función para mostrar el loader
-  const showLoading = (message) => {
-    console.log("Mostrando loader:", message);
-    setLoading(true);
-  };
-
-  // Función para ocultar el loader
-  const hideLoading = () => {
-    console.log("Ocultando loader");
-    setLoading(false);
-  };
-
-  // Función para obtener la lista de administradores
-  const fetchAdmins = async (contract) => {
-    try {
-      console.log("Obteniendo eventos AdminAdded y AdminRemoved...");
-      const filterAdminAdded = contract.filters.AdminAdded();
-      const filterAdminRemoved = contract.filters.AdminRemoved();
-
-      const eventsAdded = await contract.queryFilter(filterAdminAdded, 0, "latest");
-      const eventsRemoved = await contract.queryFilter(filterAdminRemoved, 0, "latest");
-
-      console.log("Eventos AdminAdded:", eventsAdded);
-      console.log("Eventos AdminRemoved:", eventsRemoved);
-
-      const adminMap = new Map();
-
-      eventsAdded.forEach(event => {
-        const { admin, name } = event.args;
-        adminMap.set(admin.toLowerCase(), name);
-      });
-
-      eventsRemoved.forEach(event => {
-        const { admin } = event.args;
-        adminMap.delete(admin.toLowerCase());
-      });
-
-      // Convertir el mapa a un Set de direcciones
-      const adminSet = new Set(adminMap.keys());
-
-      console.log("Lista de Administradores:", adminSet);
-
-      return adminSet;
-    } catch (error) {
-      console.error("Error al obtener los admins:", error);
-      return new Set();
-    }
-  };
-
-  // Función para obtener la whitelist de eventos
-  const fetchWhitelist = async (contract, ownerAddress) => { // Recibir ownerAddress como parámetro
-    try {
-      showLoading("Cargando lista blanca...");
-      console.log("Obteniendo eventos UserWhitelisted y UserRemovedFromWhitelist...");
-
-      // Obtener todos los eventos de UserWhitelisted y UserRemovedFromWhitelist
-      const filterWhitelisted = contract.filters.UserWhitelisted();
-      const filterRemoved = contract.filters.UserRemovedFromWhitelist();
-
-      const eventsWhitelisted = await contract.queryFilter(filterWhitelisted, 0, "latest");
-      const eventsRemoved = await contract.queryFilter(filterRemoved, 0, "latest");
-
-      console.log("Eventos UserWhitelisted:", eventsWhitelisted);
-      console.log("Eventos UserRemovedFromWhitelist:", eventsRemoved);
-
-      const whitelistMap = new Map();
-
-      // Procesar los eventos de UserWhitelisted
-      eventsWhitelisted.forEach(event => {
-        const { user, name } = event.args;
-        whitelistMap.set(user.toLowerCase(), name);
-      });
-
-      // Procesar los eventos de UserRemovedFromWhitelist
-      eventsRemoved.forEach(event => {
-        const { user } = event.args;
-        whitelistMap.delete(user.toLowerCase());
-      });
-
-      console.log("Mapa de Whitelist:", whitelistMap);
-
-      // Convertir el mapa a un array de objetos
-      const whitelistArray = Array.from(whitelistMap.entries()).map(([address, name]) => ({
-        address,
-        name,
-        isAdmin: false, // Inicialmente falso
-      }));
-
-      // Obtener la lista de administradores
-      const adminSet = await fetchAdmins(contract);
-
-      // Incluir al propietario como administrador
-      if (ownerAddress) {
-        adminSet.add(ownerAddress.toLowerCase());
-      }
-
-      console.log("Lista de Administradores Actualizada:", adminSet);
-
-      // Actualizar el array de whitelist con el estado de admin
-      const updatedWhitelist = whitelistArray.map(user => ({
-        ...user,
-        isAdmin: adminSet.has(user.address),
-      }));
-
-      console.log("Whitelist Actualizada:", updatedWhitelist);
-
-      setWhitelistedUsers(updatedWhitelist);
-      hideLoading();
-    } catch (error) {
-      console.error("Error al obtener la whitelist:", error);
-      hideLoading();
-    }
-  };
-
   // Función para agregar un nuevo usuario a la whitelist usando Biconomy
   const addUserToWhitelist = async () => {
     if (!newUser || !userName) {
@@ -236,7 +219,13 @@ export default function AdminPanel() {
       return;
     }
 
+    if (isTransactionPending) {
+      alert("Por favor, espera a que la transacción anterior se confirme.");
+      return;
+    }
+
     try {
+      setIsTransactionPending(true);
       showLoading("Agregando usuario a la whitelist...");
 
       // Codificar la llamada a la función del contrato
@@ -254,14 +243,20 @@ export default function AdminPanel() {
       setNewUser("");
       setUserName("");
 
-      // Actualizar la whitelist
+      // Crear una instancia del contrato con el signer actualizado
       const contract = new ethers.Contract(contractAddress, contractABI, signer);
-      await fetchWhitelist(contract, owner);
+
+      // Esperar un breve momento antes de actualizar la whitelist
+      setTimeout(async () => {
+        await fetchAdminAndWhitelist(contract, userEOA);
+        setIsTransactionPending(false);
+      }, 5000); // 5 segundos de retraso para asegurar la confirmación
 
       hideLoading();
     } catch (error) {
       console.error("Error al agregar usuario a la whitelist:", error);
       hideLoading();
+      setIsTransactionPending(false);
       let errorMessage = "Ocurrió un error al agregar el usuario.";
       if (error.data && error.data.message) {
         errorMessage = error.data.message;
@@ -278,13 +273,21 @@ export default function AdminPanel() {
   const removeUserFromWhitelist = async (address) => {
     if (!address) return;
 
-    try {
-      showLoading("Eliminando usuario de la whitelist...");
+    if (isTransactionPending) {
+      alert("Por favor, espera a que la transacción anterior se confirme.");
+      return;
+    }
 
+    try {
+      setIsTransactionPending(true);
+      showLoading("Eliminando usuario de la whitelist...");
       const lowerAddress = address.toLowerCase();
 
       // Verificar si el usuario es admin
       const isUserAdmin = whitelistedUsers.find(user => user.address === lowerAddress)?.isAdmin;
+
+      // Crear una instancia del contrato
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
 
       if (isUserAdmin) {
         // Revocar rol de administrador primero
@@ -301,7 +304,6 @@ export default function AdminPanel() {
       }
 
       // Ahora, eliminar de la whitelist
-
       // Codificar la llamada a la función removeFromWhitelist
       const ifaceRemoveWhitelist = new ethers.utils.Interface(contractABI);
       const dataRemoveWhitelist = ifaceRemoveWhitelist.encodeFunctionData('removeFromWhitelist', [address]);
@@ -313,14 +315,17 @@ export default function AdminPanel() {
 
       alert("Usuario eliminado exitosamente de la whitelist.");
 
-      // Actualizar la whitelist
-      const contract = new ethers.Contract(contractAddress, contractABI, signer);
-      await fetchWhitelist(contract, owner);
+      // Esperar un breve momento antes de actualizar la whitelist
+      setTimeout(async () => {
+        await fetchAdminAndWhitelist(contract, userEOA);
+        setIsTransactionPending(false);
+      }, 5000); // 5 segundos de retraso para asegurar la confirmación
 
       hideLoading();
     } catch (error) {
       console.error("Error al eliminar usuario de la whitelist:", error);
       hideLoading();
+      setIsTransactionPending(false);
       let errorMessage = "Ocurrió un error al eliminar el usuario.";
       if (error.data && error.data.message) {
         errorMessage = error.data.message;
@@ -335,15 +340,29 @@ export default function AdminPanel() {
 
   // Función para conceder o revocar rol de administrador usando Biconomy
   const toggleAdmin = async (address, isCurrentlyAdmin) => {
+  
     if (!address) return;
 
-    if (!isOwner) {
-      alert("Solo el propietario puede gestionar administradores.");
+    if (!isAdmin) {
+      alert("Solo los administradores pueden gestionar administradores.");
+      return;
+    }
+
+    if (isTransactionPending) {
+      alert("Por favor, espera a que la transacción anterior se confirme.");
       return;
     }
 
     try {
+      setIsTransactionPending(true);
+
+      
+      // Crear una instancia del contrato
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+
       if (isCurrentlyAdmin) {
+        console.log(address)
+        console.log(isCurrentlyAdmin)
         // Revocar rol de administrador
         showLoading("Revocando rol de administrador...");
         const iface = new ethers.utils.Interface(contractABI);
@@ -354,6 +373,8 @@ export default function AdminPanel() {
         await sendTransactionWithBiconomy(contractAddress, data);
         console.log("Rol de administrador revocado para:", address);
       } else {
+        console.log(address)
+        console.log(isCurrentlyAdmin)
         // Conceder rol de administrador
         showLoading("Concediendo rol de administrador...");
         const iface = new ethers.utils.Interface(contractABI);
@@ -366,13 +387,17 @@ export default function AdminPanel() {
         console.log("Rol de administrador concedido a:", address);
       }
 
-      // Actualizar la whitelist
-      const contract = new ethers.Contract(contractAddress, contractABI, signer);
-      await fetchWhitelist(contract, owner);
+      // Esperar un breve momento antes de actualizar la whitelist
+      setTimeout(async () => {
+        await fetchAdminAndWhitelist(contract, userEOA);
+        setIsTransactionPending(false);
+      }, 5000); // 5 segundos de retraso para asegurar la confirmación
+
       hideLoading();
     } catch (error) {
       console.error(`Error al ${isCurrentlyAdmin ? "revocar" : "conceder"} rol de administrador:`, error);
       hideLoading();
+      setIsTransactionPending(false);
       let errorMessage = `Ocurrió un error al ${isCurrentlyAdmin ? "revocar" : "conceder"} el rol de administrador.`;
       if (error.data && error.data.message) {
         errorMessage = error.data.message;
@@ -392,13 +417,14 @@ export default function AdminPanel() {
         if (accounts.length > 0) {
           setUserEOA(accounts[0].toLowerCase());
           console.log("Cuenta cambiada a:", accounts[0]);
-          // Puedes agregar lógica adicional aquí si es necesario
+          // Reconectar para actualizar estados y datos
+          connectWallet();
         } else {
           setUserEOA(null);
           setUserAccount(null);
           setWhitelistedUsers([]);
           setOwner(null);
-          setIsOwner(false);
+          setIsAdmin(false);
           console.log("Wallet desconectada");
         }
       };
@@ -420,7 +446,7 @@ export default function AdminPanel() {
         }
       };
     }
-  }, []);
+  }, [connectWallet]);
 
   return (
     <div className="admin-panel-container">
@@ -489,6 +515,7 @@ export default function AdminPanel() {
                   className="iconAction"
                   onClick={addUserToWhitelist}
                   style={{ marginLeft: "10px" }}
+                  disabled={isTransactionPending}
                 >
                   <img src="../images/icon_more.svg" alt="Agregar" />
                 </button>
@@ -519,28 +546,34 @@ export default function AdminPanel() {
                         <td align="center">{user.name}</td>
                         <td align="center">{user.isAdmin ? "Administrador" : "Usuario"}</td>
                         <td align="center">
-                          {user.address.toLowerCase() !== owner && isOwner && (
-                            <button
-                              className="action-button"
-                              onClick={() => toggleAdmin(user.address, user.isAdmin)}
-                            >
-                              {user.isAdmin ? "Revocar Admin" : "Conceder Admin"}
-                            </button>
-                          )}
+                          {/* Mostrar botones solo si el usuario conectado es un administrador y no está gestionando su propia cuenta */}
+                          {isAdmin && user.address !== userEOA && (
+                            <>
+                              {/* Botón de Toggle Admin */}
+                              <button
+                                className="iconAction"
+                                style={{ marginLeft: "10px" }}
+                                onClick={() => toggleAdmin(user.address, user.isAdmin)}
+                                disabled={isTransactionPending}
+                              >
+                                {user.isAdmin ? (
+                                  <img src="../images/icon_remove_admin.svg" alt="Revocar rol de administrador" />
+                                ) : (
+                                  <img src="../images/icon_remove_admin.svg" alt="Conceder rol de administrador" />
+                                )}
+                              </button>
 
-                          <button
-                            className="iconAction"
-                            style={{ marginLeft: "10px" }}
-                          >
-                            <img src="../images/icon_group_users.svg" alt="Conceder rol de administrador" />
-                          </button>
-                          <button
-                            className="iconAction"
-                            onClick={() => removeUserFromWhitelist(user.address)}
-                            style={{ marginLeft: "10px" }}
-                          >
-                            <img src="../images/icon_delete.svg" alt="Eliminar" />
-                          </button>
+                              {/* Botón para Eliminar Usuario */}
+                              <button
+                                className="iconAction"
+                                onClick={() => removeUserFromWhitelist(user.address)}
+                                style={{ marginLeft: "10px" }}
+                                disabled={isTransactionPending}
+                              >
+                                <img src="../images/icon_delete.svg" alt="Eliminar" />
+                              </button>
+                            </>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -555,10 +588,28 @@ export default function AdminPanel() {
               </table>
             </div>
           </div>
+
+          {/* Botón de Refresco Manual */}
+          <div className="centerText margin20">
+            <button
+              className="refresh-button"
+              onClick={async () => {
+                try {
+                  const contract = new ethers.Contract(contractAddress, contractABI, signer);
+                  await fetchAdminAndWhitelist(contract, userEOA);
+                } catch (error) {
+                  console.error("Error al refrescar la lista:", error);
+                }
+              }}
+              disabled={isTransactionPending}
+            >
+              Refrescar Lista
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Loader (Opcional) */}
+      {/* Loader */}
       {loading && <Loader message="Cargando..." />}
     </div>
   );

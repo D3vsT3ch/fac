@@ -35,6 +35,14 @@ contract Fac is Initializable, ContextUpgradeable {
         _;
     }
 
+    modifier onlyOwnerOrAdmin() virtual {
+        require(
+            _msgSender() == owner || adminList[_msgSender()].userAddress != address(0),
+            "Solo el propietario o administradores pueden realizar esta accion"
+        );
+        _;
+    }
+
     modifier onlyAdmin() virtual {
         require(adminList[_msgSender()].userAddress != address(0), "Solo administradores pueden realizar esta accion");
         _;
@@ -61,9 +69,7 @@ contract Fac is Initializable, ContextUpgradeable {
         emit AdminAdded(owner, "Propietario");
     }
 
-    // El resto del contrato permanece igual...
-
-    function addAdmin(address _admin, string memory _name) public onlyOwner {
+    function addAdmin(address _admin, string memory _name) public onlyOwnerOrAdmin {
         require(adminList[_admin].userAddress == address(0), "Ya es administrador");
         require(whiteList[_admin].userAddress != address(0), "El usuario debe estar en la whitelist");
 
@@ -71,7 +77,7 @@ contract Fac is Initializable, ContextUpgradeable {
         emit AdminAdded(_admin, _name);
     }
 
-    function removeAdmin(address _admin) public onlyOwner {
+    function removeAdmin(address _admin) public onlyOwnerOrAdmin {
         require(_admin != owner, "No se puede eliminar al propietario");
         require(adminList[_admin].userAddress != address(0), "No es administrador");
 
