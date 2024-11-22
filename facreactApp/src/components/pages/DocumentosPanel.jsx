@@ -262,8 +262,8 @@ export default function DocumentosPanel() {
                                         <thead>
                                             <tr>
                                                 <th>Hash del Documento</th>
-                                                <th>Fecha de Subida</th>
                                                 <th>Uploader</th>
+                                                <th>Fecha de Subida</th>
                                                 <th>Acciones</th>
                                             </tr>
                                         </thead>
@@ -272,10 +272,11 @@ export default function DocumentosPanel() {
                                                 documents.map((doc, index) => (
                                                     <tr key={doc.hash}>
                                                         <td>{doc.hash}</td>
-                                                        <td>{doc.timestamp}</td>
+                                                        
                                                         <td>{doc.uploader}</td>
+                                                        <td>{doc.timestamp}</td>
                                                         <td>
-                                                            <button onClick={() => handleViewDocument(doc.hash)}>Ver</button>
+                                                            <button   className="iconAction" onClick={() => handleViewDocument(doc.hash)}> <img src="../images/icon_eye.svg" alt="ver" /></button>
                                                             {/* Puedes agregar más acciones aquí */}
                                                         </td>
                                                     </tr>
