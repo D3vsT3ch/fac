@@ -16,6 +16,12 @@ module.exports = {
       url: "https://rpc-amoy.polygon.technology/",
       accounts: [`0x${process.env.TESTNET_PRIVATE_KEY}`]
     
+    },
+    sepolia: {
+      url: "https://eth-sepolia.public.blastapi.io",
+      accounts: [`0x${process.env.TESTNET_PRIVATE_KEY}`],
+
+    
     }
    
   }

@@ -9,16 +9,17 @@ import './styles/App.css';
 const App = () => {
   return (
     <Routes>
-      <Route path="/" element={<MainPage />} />
+      
      
       {/* Puedes agregar más rutas aquí */}
       <Route path="*" element={<div>Página no encontrada</div>} />
+      <Route path="/" element={<MainPage />} />
       <Route
         path="/admin"
         element={<AdminPanel />}
       />
       <Route
-        path="/docuementos"
+        path="/documentos"
         element={<DocumentosPanel />}
       />
     </Routes>

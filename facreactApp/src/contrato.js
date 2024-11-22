@@ -16,38 +16,6 @@ export const contractABI = [
     "inputs": [
       {
         "indexed": true,
-        "internalType": "address",
-        "name": "admin",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
-      }
-    ],
-    "name": "AdminAdded",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "admin",
-        "type": "address"
-      }
-    ],
-    "name": "AdminRemoved",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
         "internalType": "bytes32",
         "name": "docHash",
         "type": "bytes32"
@@ -56,6 +24,12 @@ export const contractABI = [
         "indexed": true,
         "internalType": "address",
         "name": "uploader",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "eoa",
         "type": "address"
       },
       {
@@ -87,7 +61,38 @@ export const contractABI = [
       {
         "indexed": true,
         "internalType": "address",
-        "name": "user",
+        "name": "smartAccount",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum Fac.Role",
+        "name": "oldRole",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum Fac.Role",
+        "name": "newRole",
+        "type": "uint8"
+      }
+    ],
+    "name": "RoleChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "smartAccount",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "eoa",
         "type": "address"
       }
     ],
@@ -100,7 +105,13 @@ export const contractABI = [
       {
         "indexed": true,
         "internalType": "address",
-        "name": "user",
+        "name": "smartAccount",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "eoa",
         "type": "address"
       },
       {
@@ -108,6 +119,12 @@ export const contractABI = [
         "internalType": "string",
         "name": "name",
         "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum Fac.Role",
+        "name": "role",
+        "type": "uint8"
       }
     ],
     "name": "UserWhitelisted",
@@ -121,16 +138,26 @@ export const contractABI = [
     "inputs": [
       {
         "internalType": "address",
-        "name": "_admin",
+        "name": "_eoa",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_smartAccount",
         "type": "address"
       },
       {
         "internalType": "string",
         "name": "_name",
         "type": "string"
+      },
+      {
+        "internalType": "enum Fac.Role",
+        "name": "_role",
+        "type": "uint8"
       }
     ],
-    "name": "addAdmin",
+    "name": "addToWhitelist",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -139,16 +166,16 @@ export const contractABI = [
     "inputs": [
       {
         "internalType": "address",
-        "name": "_user",
+        "name": "_smartAccount",
         "type": "address"
       },
       {
-        "internalType": "string",
-        "name": "_name",
-        "type": "string"
+        "internalType": "enum Fac.Role",
+        "name": "_newRole",
+        "type": "uint8"
       }
     ],
-    "name": "addToWhitelist",
+    "name": "changeRole",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -171,6 +198,11 @@ export const contractABI = [
         "internalType": "string[]",
         "name": "",
         "type": "string[]"
+      },
+      {
+        "internalType": "address[]",
+        "name": "",
+        "type": "address[]"
       },
       {
         "internalType": "address[]",
@@ -205,6 +237,11 @@ export const contractABI = [
         "internalType": "address",
         "name": "",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -234,7 +271,7 @@ export const contractABI = [
     "inputs": [
       {
         "internalType": "address",
-        "name": "_user",
+        "name": "_smartAccount",
         "type": "address"
       }
     ],
@@ -272,7 +309,7 @@ export const contractABI = [
     "inputs": [
       {
         "internalType": "address",
-        "name": "_user",
+        "name": "_smartAccount",
         "type": "address"
       }
     ],
@@ -304,20 +341,7 @@ export const contractABI = [
     "inputs": [
       {
         "internalType": "address",
-        "name": "_admin",
-        "type": "address"
-      }
-    ],
-    "name": "removeAdmin",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_user",
+        "name": "_smartAccount",
         "type": "address"
       }
     ],
@@ -332,6 +356,11 @@ export const contractABI = [
         "internalType": "string",
         "name": "_data",
         "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "_eoa",
+        "type": "address"
       }
     ],
     "name": "saveDocument",
