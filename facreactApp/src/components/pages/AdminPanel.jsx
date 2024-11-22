@@ -1,7 +1,7 @@
 // src/components/pages/AdminPanel.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ethers, utils } from "ethers";
-import UserInfo from "../UserInfo";
+import UserInfo from "../UserInfoDocumentos.jsx";
 import WalletConnect from "../WalletConnect";
 import Loader from "../Loader";
 
@@ -9,19 +9,49 @@ import { contractABI, contractAddress } from "../../contrato";
 import "../../styles/App.css";
 import { requiredChainId, networkConfig } from "../../config";
 import { initializeBiconomy } from "../../biconomy";
+import { PaymasterMode } from "@biconomy/account"; // Importar PaymasterMode si se usa
+import axios from "axios";
 
 export default function AdminPanel() {
+  // Estados existentes
   const [userAccount, setUserAccount] = useState(null); // Dirección de Smart Account
   const [userEOA, setUserEOA] = useState(null); // Dirección EOA
   const [loading, setLoading] = useState(false);
   const [smartAccount, setSmartAccount] = useState(null);
   const [signer, setSigner] = useState(null);
   const [whitelistedUsers, setWhitelistedUsers] = useState([]);
-  const [newUser, setNewUser] = useState("");
-  const [userName, setUserName] = useState(""); // Nuevo estado para el nombre del usuario
+  const [newEOA, setNewEOA] = useState(""); // Estado para EOA
+  const [newSmartAccount, setNewSmartAccount] = useState(""); // Estado para Smart Account
+  const [newName, setNewName] = useState(""); // Estado para el nombre del usuario
+  const [newRole, setNewRole] = useState(0); // Estado para Rol (0 = Usuario, 1 = Administrador)
   const [owner, setOwner] = useState(null); // Estado para almacenar el owner
   const [isAdmin, setIsAdmin] = useState(false); // Estado para verificar si el usuario conectado es admin
   const [isTransactionPending, setIsTransactionPending] = useState(false); // Estado para gestionar transacciones pendientes
+
+  // Estados para manejar transacciones adicionales
+  const [transactionHash, setTransactionHash] = useState(null);
+  const [dataJson, setDataJson] = useState(null);
+  const [status, setStatus] = useState('notSigned');
+  const [isWhitelisted, setIsWhitelisted] = useState(false);
+
+  // Parsear parámetros de la URL al montar el componente
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const dataParam = params.get('data');
+    if (dataParam) {
+      console.log('Raw dataParam:', dataParam);
+      try {
+        const decodedData = JSON.parse(decodeURIComponent(dataParam));
+        console.log('Decoded dataParam:', decodedData);
+        setDataJson(decodedData);
+      } catch (error) {
+        console.error('Error al parsear el parámetro "data":', error);
+        alert('El parámetro "data" en la URL no es válido.');
+      }
+    } else {
+      console.log('No se proporcionó el parámetro "data" en la URL.');
+    }
+  }, []);
 
   // Función para mostrar el loader
   const showLoading = (message) => {
@@ -33,91 +63,6 @@ export default function AdminPanel() {
   const hideLoading = () => {
     console.log("Ocultando loader");
     setLoading(false);
-  };
-
-  // Función optimizada para obtener administradores y whitelist
-  const fetchAdminAndWhitelist = async (contract, userEOAAddress, retries = 3, delayTime = 2000) => {
-    try {
-      showLoading("Cargando administradores y lista blanca...");
-      console.log("Obteniendo eventos AdminAdded, AdminRemoved, UserWhitelisted y UserRemovedFromWhitelist...");
-
-      // Definir los filtros de eventos
-      const filterAdminAdded = contract.filters.AdminAdded();
-      const filterAdminRemoved = contract.filters.AdminRemoved();
-      const filterUserWhitelisted = contract.filters.UserWhitelisted();
-      const filterUserRemoved = contract.filters.UserRemovedFromWhitelist();
-
-      // Ejecutar las consultas en paralelo
-      const [
-        eventsAdminAdded,
-        eventsAdminRemoved,
-        eventsUserWhitelisted,
-        eventsUserRemoved
-      ] = await Promise.all([
-        contract.queryFilter(filterAdminAdded, 0, "latest"),
-        contract.queryFilter(filterAdminRemoved, 0, "latest"),
-        contract.queryFilter(filterUserWhitelisted, 0, "latest"),
-        contract.queryFilter(filterUserRemoved, 0, "latest"),
-      ]);
-
-      console.log("Eventos AdminAdded:", eventsAdminAdded);
-      console.log("Eventos AdminRemoved:", eventsAdminRemoved);
-      console.log("Eventos UserWhitelisted:", eventsUserWhitelisted);
-      console.log("Eventos UserRemovedFromWhitelist:", eventsUserRemoved);
-
-      // Procesar eventos de administradores
-      const adminMap = new Map();
-      eventsAdminAdded.forEach(event => {
-        const { admin, name } = event.args;
-        adminMap.set(admin.toLowerCase(), name);
-      });
-
-      eventsAdminRemoved.forEach(event => {
-        const { admin } = event.args;
-        adminMap.delete(admin.toLowerCase());
-      });
-
-      const adminSet = new Set(adminMap.keys());
-      console.log("Lista de Administradores:", adminSet);
-
-      // Procesar eventos de la whitelist
-      const whitelistMap = new Map();
-      eventsUserWhitelisted.forEach(event => {
-        const { user, name } = event.args;
-        whitelistMap.set(user.toLowerCase(), name);
-      });
-
-      eventsUserRemoved.forEach(event => {
-        const { user } = event.args;
-        whitelistMap.delete(user.toLowerCase());
-      });
-
-      console.log("Mapa de Whitelist:", whitelistMap);
-
-      // Construir el array de usuarios con su estado de administrador
-      const whitelistArray = Array.from(whitelistMap.entries()).map(([address, name]) => ({
-        address,
-        name,
-        isAdmin: adminSet.has(address.toLowerCase()), // Determinar si es admin
-      }));
-
-      console.log("Whitelist Actualizada:", whitelistArray);
-
-      // Actualizar el estado
-      setWhitelistedUsers(whitelistArray);
-      setIsAdmin(adminSet.has(userEOAAddress.toLowerCase()));
-      setOwner(adminSet.has(userEOAAddress.toLowerCase()) ? userEOAAddress.toLowerCase() : owner);
-      hideLoading();
-    } catch (error) {
-      console.error("Error al obtener administradores y la whitelist:", error);
-      if (retries > 0) {
-        console.log(`Reintentando fetchAdminAndWhitelist... Intentos restantes: ${retries}`);
-        setTimeout(() => fetchAdminAndWhitelist(contract, userEOAAddress, retries - 1, delayTime), delayTime);
-      } else {
-        alert("No se pudo cargar administradores y la lista blanca después de varios intentos. Por favor, intenta de nuevo más tarde.");
-        hideLoading();
-      }
-    }
   };
 
   // Función para conectar la wallet
@@ -149,10 +94,11 @@ export default function AdminPanel() {
         setSmartAccount(sa);
         setSigner(userSigner);
 
+        // Obtener la dirección de la Smart Account correctamente
         console.log("Obteniendo dirección de la Smart Account...");
         const address = await sa.getAccountAddress();
-        setUserAccount(address);
-        console.log("Smart Account conectado:", address);
+        setUserAccount(address.toLowerCase());
+        console.log("Smart Account conectado:", address.toLowerCase());
 
         // Crear una instancia del contrato
         const contract = new ethers.Contract(contractAddress, contractABI, userSigner);
@@ -165,7 +111,8 @@ export default function AdminPanel() {
         console.log("Owner Address obtenido:", lowerOwnerAddress);
 
         // Obtener la lista de administradores y la whitelist
-        await fetchAdminAndWhitelist(contract, lowerEoaAddress);
+        await fetchAdminAndWhitelist(contract, address.toLowerCase());
+
       } catch (error) {
         console.error("Error al conectar la wallet:", error);
         alert(`Error al conectar la wallet: ${error.message}`);
@@ -175,7 +122,245 @@ export default function AdminPanel() {
     }
   };
 
-  // Función para enviar transacciones utilizando Biconomy
+  // Función para verificar si la cuenta está en la whitelist
+  const checkWhitelist = useCallback(async (account) => {
+    console.log("checkWhitelist llamada con account:", account);
+    if (!signer) {
+      console.log("Signer no está definido en checkWhitelist");
+      return;
+    }
+
+    try {
+      console.log("Verificando si la cuenta está en la whitelist:", account);
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      const whitelisted = await contract.isWhitelisted(account);
+      setIsWhitelisted(whitelisted);
+      console.log("Estado isWhitelisted actualizado a:", whitelisted);
+    } catch (error) {
+      console.error("Error al verificar la whitelist:", error);
+    }
+  }, [signer]);
+
+  // Función para obtener administradores y whitelist con reintentos
+  const fetchAdminAndWhitelist = async (contract, userAccountAddress, retries = 3, delayTime = 2000) => {
+    try {
+      showLoading("Cargando administradores y lista blanca...");
+      console.log("Obteniendo eventos UserWhitelisted, UserRemovedFromWhitelist y RoleChanged...");
+
+      // Definir los filtros de eventos
+      const filterUserWhitelisted = contract.filters.UserWhitelisted();
+      const filterUserRemoved = contract.filters.UserRemovedFromWhitelist();
+      const filterRoleChanged = contract.filters.RoleChanged();
+
+      // Ejecutar las consultas en paralelo
+      const [
+        eventsUserWhitelisted,
+        eventsUserRemoved,
+        eventsRoleChanged
+      ] = await Promise.all([
+        contract.queryFilter(filterUserWhitelisted, 0, "latest"),
+        contract.queryFilter(filterUserRemoved, 0, "latest"),
+        contract.queryFilter(filterRoleChanged, 0, "latest"),
+      ]);
+
+      console.log("Eventos UserWhitelisted:", eventsUserWhitelisted);
+      console.log("Eventos UserRemovedFromWhitelist:", eventsUserRemoved);
+      console.log("Eventos RoleChanged:", eventsRoleChanged);
+
+      // Procesar eventos de la whitelist
+      const whitelistMap = new Map();
+      eventsUserWhitelisted.forEach(event => {
+        const { smartAccount, eoa, name, role } = event.args;
+        whitelistMap.set(smartAccount.toLowerCase(), { eoa: eoa.toLowerCase(), name, role });
+      });
+
+      eventsUserRemoved.forEach(event => {
+        const { smartAccount } = event.args;
+        whitelistMap.delete(smartAccount.toLowerCase());
+      });
+
+      // Procesar eventos de cambio de rol
+      eventsRoleChanged.forEach(event => {
+        const { smartAccount, newRole } = event.args;
+        const lowerSmartAccount = smartAccount.toLowerCase();
+        if (whitelistMap.has(lowerSmartAccount)) {
+          whitelistMap.get(lowerSmartAccount).role = newRole;
+        }
+      });
+
+      console.log("Mapa de Whitelist después de procesar eventos:", whitelistMap);
+
+      // Construir el array de usuarios con su estado de administrador
+      const whitelistArray = Array.from(whitelistMap.entries()).map(([smartAccount, user]) => ({
+        smartAccount,
+        eoa: user.eoa,
+        name: user.name,
+        isAdmin: user.role === 1, // Role.ADMIN = 1
+      }));
+
+      console.log("Whitelist Actualizada:", whitelistArray);
+
+      // Crear el conjunto de administradores
+      const adminSet = new Set(
+        whitelistArray
+          .filter(user => user.isAdmin)
+          .map(user => user.smartAccount)
+      );
+
+      console.log("Lista de Administradores:", adminSet);
+
+      // Actualizar el estado
+      setWhitelistedUsers(whitelistArray);
+      setIsAdmin(adminSet.has(userAccountAddress.toLowerCase()));
+      setOwner(adminSet.has(userAccountAddress.toLowerCase()) ? userAccountAddress.toLowerCase() : owner);
+      hideLoading();
+
+      // Verificar si el usuario está en la whitelist
+      await checkWhitelist(userAccountAddress);
+
+    } catch (error) {
+      console.error("Error al obtener administradores y la whitelist:", error);
+      if (retries > 0) {
+        console.log(`Reintentando fetchAdminAndWhitelist... Intentos restantes: ${retries}`);
+        setTimeout(() => fetchAdminAndWhitelist(contract, userAccountAddress, retries - 1, delayTime), delayTime);
+      } else {
+        alert("No se pudo cargar administradores y la lista blanca después de varios intentos. Por favor, intenta de nuevo más tarde.");
+        hideLoading();
+      }
+    }
+  };
+
+  // Monitorear cambios en signer y userAccount para verificar whitelist
+  useEffect(() => {
+    if (signer && userAccount) {
+      console.log("Llamando a checkWhitelist desde useEffect");
+      checkWhitelist(userAccount);
+    }
+  }, [signer, userAccount, checkWhitelist]);
+
+  // Monitorear cambios en isWhitelisted para logging
+  useEffect(() => {
+    console.log("El estado isWhitelisted cambió a:", isWhitelisted);
+  }, [isWhitelisted]);
+
+  // Manejar cambios en la cuenta o en la red
+  useEffect(() => {
+    if (window.ethereum) {
+      const handleAccountsChanged = (accounts) => {
+        if (accounts.length > 0) {
+          setUserEOA(accounts[0].toLowerCase());
+          console.log("Cuenta cambiada a:", accounts[0]);
+          // Reconectar para actualizar estados y datos
+          connectWallet();
+        } else {
+          setUserEOA(null);
+          setUserAccount(null);
+          setWhitelistedUsers([]);
+          setOwner(null);
+          setIsAdmin(false);
+          setIsWhitelisted(false);
+          setTransactionHash(null);
+          setDataJson(null);
+          setStatus('notSigned');
+          console.log("Wallet desconectada");
+        }
+      };
+
+      const handleChainChanged = (chainId) => {
+        console.log("Chain cambiada a:", chainId);
+        // Puedes recargar la página o manejar el cambio de red aquí
+        window.location.reload();
+      };
+
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      window.ethereum.on('chainChanged', handleChainChanged);
+
+      // Cleanup on unmount
+      return () => {
+        if (window.ethereum.removeListener) {
+          window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+          window.ethereum.removeListener('chainChanged', handleChainChanged);
+        }
+      };
+    }
+  }, [connectWallet]);
+
+  // Función para enviar transacciones utilizando el SDK de Biconomy
+  const sendTransactionWithSDK = async () => {
+    if (!smartAccount || !dataJson) {
+      alert("La Smart Account o los datos JSON no están inicializados.");
+      return;
+    }
+
+    if (!isWhitelisted) {
+      alert("Tu cuenta no está en la lista blanca.");
+      return;
+    }
+
+    if (isTransactionPending) {
+      alert("Por favor, espera a que la transacción anterior se confirme.");
+      return;
+    }
+
+    try {
+      setIsTransactionPending(true);
+      setStatus('signing');
+      showLoading("Firmando la transacción...");
+
+      console.log("Enviando transacción utilizando el SDK de Biconomy...");
+
+      // Preparar los datos de la transacción
+      const tx = {
+        to: contractAddress,
+        data: encodeFunctionCall('saveDocument', [JSON.stringify(dataJson), userAccount]),
+      };
+
+      // Enviar la transacción usando el SDK
+      const userOpResponse = await smartAccount.sendTransaction(tx, {
+        paymasterServiceData: { mode: PaymasterMode.SPONSORED },
+      });
+
+      // Obtener el hash de la transacción
+      const { transactionHash } = await userOpResponse.waitForTxHash();
+      console.log("Transaction Hash", transactionHash);
+      setTransactionHash(transactionHash);
+
+      // Esperar a que la transacción se confirme
+      const userOpReceipt = await userOpResponse.wait();
+      if (userOpReceipt.success === "true" || userOpReceipt.success === true) {
+        console.log("UserOp receipt", userOpReceipt);
+        console.log("Transaction receipt", userOpReceipt.receipt);
+        setStatus('signed');
+        alert("Transacción enviada exitosamente.");
+      } else {
+        throw new Error("La transacción falló.");
+      }
+
+    } catch (error) {
+      console.error("Error al enviar la transacción con el SDK:", error);
+      let errorMessage = "Ocurrió un error al enviar la transacción.";
+      if (error.response && error.response.data && error.response.data.error) {
+        errorMessage = error.response.data.error.message;
+      } else if (error.reason) {
+        errorMessage = error.reason;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      alert("Error: " + errorMessage);
+      setStatus('error');
+    } finally {
+      setIsTransactionPending(false);
+      hideLoading();
+    }
+  };
+
+  // Función para codificar la llamada a la función del contrato
+  const encodeFunctionCall = (functionName, params) => {
+    const iface = new ethers.utils.Interface(contractABI);
+    return iface.encodeFunctionData(functionName, params);
+  };
+
+  // Función para enviar transacciones utilizando Biconomy (ya existente)
   const sendTransactionWithBiconomy = async (to, data) => {
     if (!smartAccount) {
       throw new Error("La Smart Account no está inicializada.");
@@ -204,13 +389,18 @@ export default function AdminPanel() {
 
   // Función para agregar un nuevo usuario a la whitelist usando Biconomy
   const addUserToWhitelist = async () => {
-    if (!newUser || !userName) {
-      alert("Por favor, proporciona la dirección y el nombre del usuario.");
+    if (!newEOA || !newSmartAccount || !newName) {
+      alert("Por favor, proporciona la dirección EOA, la Smart Account y el nombre del usuario.");
       return;
     }
 
-    if (!utils.isAddress(newUser)) {
-      alert("Por favor, proporciona una dirección Ethereum válida.");
+    if (!utils.isAddress(newEOA)) {
+      alert("Por favor, proporciona una dirección EOA válida.");
+      return;
+    }
+
+    if (!utils.isAddress(newSmartAccount)) {
+      alert("Por favor, proporciona una dirección de Smart Account válida.");
       return;
     }
 
@@ -228,9 +418,9 @@ export default function AdminPanel() {
       setIsTransactionPending(true);
       showLoading("Agregando usuario a la whitelist...");
 
-      // Codificar la llamada a la función del contrato
+      // Codificar la llamada a la función del contrato incluyendo el rol seleccionado
       const iface = new ethers.utils.Interface(contractABI);
-      const data = iface.encodeFunctionData('addToWhitelist', [newUser, userName]);
+      const data = iface.encodeFunctionData('addToWhitelist', [newEOA, newSmartAccount, newName, newRole]);
       console.log("Datos codificados de la transacción:", data);
 
       // Enviar la transacción usando Biconomy
@@ -240,15 +430,17 @@ export default function AdminPanel() {
       alert("Usuario agregado exitosamente a la whitelist.");
 
       // Limpiar los campos de entrada
-      setNewUser("");
-      setUserName("");
+      setNewEOA("");
+      setNewSmartAccount("");
+      setNewName("");
+      setNewRole(0); // Resetear el rol a Usuario
 
       // Crear una instancia del contrato con el signer actualizado
       const contract = new ethers.Contract(contractAddress, contractABI, signer);
 
       // Esperar un breve momento antes de actualizar la whitelist
       setTimeout(async () => {
-        await fetchAdminAndWhitelist(contract, userEOA);
+        await fetchAdminAndWhitelist(contract, userAccount);
         setIsTransactionPending(false);
       }, 5000); // 5 segundos de retraso para asegurar la confirmación
 
@@ -270,8 +462,8 @@ export default function AdminPanel() {
   };
 
   // Función para eliminar un usuario de la whitelist y revocar admin si aplica
-  const removeUserFromWhitelist = async (address) => {
-    if (!address) return;
+  const removeUserFromWhitelist = async (smartAccountAddress) => {
+    if (!smartAccountAddress) return;
 
     if (isTransactionPending) {
       alert("Por favor, espera a que la transacción anterior se confirme.");
@@ -281,10 +473,11 @@ export default function AdminPanel() {
     try {
       setIsTransactionPending(true);
       showLoading("Eliminando usuario de la whitelist...");
-      const lowerAddress = address.toLowerCase();
+      const lowerSmartAccount = smartAccountAddress.toLowerCase();
 
       // Verificar si el usuario es admin
-      const isUserAdmin = whitelistedUsers.find(user => user.address === lowerAddress)?.isAdmin;
+      const isUserAdmin = whitelistedUsers.find(user => user.smartAccount.toLowerCase() === lowerSmartAccount)?.isAdmin;
+      console.log(`¿El usuario ${smartAccountAddress} es admin? ${isUserAdmin}`);
 
       // Crear una instancia del contrato
       const contract = new ethers.Contract(contractAddress, contractABI, signer);
@@ -293,31 +486,31 @@ export default function AdminPanel() {
         // Revocar rol de administrador primero
         console.log("El usuario es administrador. Revocando rol de administrador...");
 
-        // Codificar la llamada a la función removeAdmin
-        const ifaceRemoveAdmin = new ethers.utils.Interface(contractABI);
-        const dataRemoveAdmin = ifaceRemoveAdmin.encodeFunctionData('removeAdmin', [address]);
-        console.log("Datos codificados para removeAdmin:", dataRemoveAdmin);
+        // Codificar la llamada a la función changeRole para remover admin (rol = 0)
+        const ifaceChangeRole = new ethers.utils.Interface(contractABI);
+        const dataRemoveAdmin = ifaceChangeRole.encodeFunctionData('changeRole', [smartAccountAddress, 0]); // Role.USER = 0
+        console.log("Datos codificados para changeRole (remover admin):", dataRemoveAdmin);
 
         // Enviar la transacción para revocar admin usando Biconomy
         await sendTransactionWithBiconomy(contractAddress, dataRemoveAdmin);
-        console.log("Rol de administrador revocado para:", address);
+        console.log("Rol de administrador revocado para:", smartAccountAddress);
       }
 
       // Ahora, eliminar de la whitelist
       // Codificar la llamada a la función removeFromWhitelist
       const ifaceRemoveWhitelist = new ethers.utils.Interface(contractABI);
-      const dataRemoveWhitelist = ifaceRemoveWhitelist.encodeFunctionData('removeFromWhitelist', [address]);
+      const dataRemoveWhitelist = ifaceRemoveWhitelist.encodeFunctionData('removeFromWhitelist', [smartAccountAddress]);
       console.log("Datos codificados para removeFromWhitelist:", dataRemoveWhitelist);
 
       // Enviar la transacción para eliminar de la whitelist usando Biconomy
       await sendTransactionWithBiconomy(contractAddress, dataRemoveWhitelist);
-      console.log("Usuario eliminado de la whitelist:", address);
+      console.log("Usuario eliminado de la whitelist:", smartAccountAddress);
 
       alert("Usuario eliminado exitosamente de la whitelist.");
 
       // Esperar un breve momento antes de actualizar la whitelist
       setTimeout(async () => {
-        await fetchAdminAndWhitelist(contract, userEOA);
+        await fetchAdminAndWhitelist(contract, userAccount);
         setIsTransactionPending(false);
       }, 5000); // 5 segundos de retraso para asegurar la confirmación
 
@@ -339,9 +532,8 @@ export default function AdminPanel() {
   };
 
   // Función para conceder o revocar rol de administrador usando Biconomy
-  const toggleAdmin = async (address, isCurrentlyAdmin) => {
-  
-    if (!address) return;
+  const toggleAdmin = async (smartAccountAddress, isCurrentlyAdmin) => {
+    if (!smartAccountAddress) return;
 
     if (!isAdmin) {
       alert("Solo los administradores pueden gestionar administradores.");
@@ -356,40 +548,36 @@ export default function AdminPanel() {
     try {
       setIsTransactionPending(true);
 
-      
       // Crear una instancia del contrato
       const contract = new ethers.Contract(contractAddress, contractABI, signer);
 
       if (isCurrentlyAdmin) {
-        console.log(address)
-        console.log(isCurrentlyAdmin)
+        console.log(smartAccountAddress, isCurrentlyAdmin);
         // Revocar rol de administrador
         showLoading("Revocando rol de administrador...");
         const iface = new ethers.utils.Interface(contractABI);
-        const data = iface.encodeFunctionData('removeAdmin', [address]);
-        console.log("Datos codificados para removeAdmin:", data);
+        const data = iface.encodeFunctionData('changeRole', [smartAccountAddress, 0]); // Role.USER = 0
+        console.log("Datos codificados para changeRole (remover admin):", data);
 
         // Enviar la transacción usando Biconomy
         await sendTransactionWithBiconomy(contractAddress, data);
-        console.log("Rol de administrador revocado para:", address);
+        console.log("Rol de administrador revocado para:", smartAccountAddress);
       } else {
-        console.log(address)
-        console.log(isCurrentlyAdmin)
+        console.log(smartAccountAddress, isCurrentlyAdmin);
         // Conceder rol de administrador
         showLoading("Concediendo rol de administrador...");
         const iface = new ethers.utils.Interface(contractABI);
-        const name = whitelistedUsers.find(user => user.address.toLowerCase() === address.toLowerCase())?.name || "Administrador";
-        const data = iface.encodeFunctionData('addAdmin', [address, name]);
-        console.log("Datos codificados para addAdmin:", data);
+        const data = iface.encodeFunctionData('changeRole', [smartAccountAddress, 1]); // Role.ADMIN = 1
+        console.log("Datos codificados para changeRole (conceder admin):", data);
 
         // Enviar la transacción usando Biconomy
         await sendTransactionWithBiconomy(contractAddress, data);
-        console.log("Rol de administrador concedido a:", address);
+        console.log("Rol de administrador concedido a:", smartAccountAddress);
       }
 
       // Esperar un breve momento antes de actualizar la whitelist
       setTimeout(async () => {
-        await fetchAdminAndWhitelist(contract, userEOA);
+        await fetchAdminAndWhitelist(contract, userAccount);
         setIsTransactionPending(false);
       }, 5000); // 5 segundos de retraso para asegurar la confirmación
 
@@ -409,44 +597,6 @@ export default function AdminPanel() {
       alert("Error: " + errorMessage);
     }
   };
-
-  // Manejar cambios en la cuenta o en la red
-  useEffect(() => {
-    if (window.ethereum) {
-      const handleAccountsChanged = (accounts) => {
-        if (accounts.length > 0) {
-          setUserEOA(accounts[0].toLowerCase());
-          console.log("Cuenta cambiada a:", accounts[0]);
-          // Reconectar para actualizar estados y datos
-          connectWallet();
-        } else {
-          setUserEOA(null);
-          setUserAccount(null);
-          setWhitelistedUsers([]);
-          setOwner(null);
-          setIsAdmin(false);
-          console.log("Wallet desconectada");
-        }
-      };
-
-      const handleChainChanged = (chainId) => {
-        console.log("Chain cambiada a:", chainId);
-        // Puedes recargar la página o manejar el cambio de red aquí
-        window.location.reload();
-      };
-
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      window.ethereum.on('chainChanged', handleChainChanged);
-
-      // Cleanup on unmount
-      return () => {
-        if (window.ethereum.removeListener) {
-          window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-          window.ethereum.removeListener('chainChanged', handleChainChanged);
-        }
-      };
-    }
-  }, [connectWallet]);
 
   return (
     <div className="admin-panel-container">
@@ -482,36 +632,49 @@ export default function AdminPanel() {
           {/* Añadir nuevo usuario */}
           <div className="flexH gap30 margin46">
             <div className="flex1">
-              <label htmlFor="addAccount" className="titleLabel">
+              <label className="titleLabel">
                 Añadir nuevo usuario
               </label>
               <div className="containerInput">
-                <label htmlFor="addAccount" className="titleLabel labelW" >
-                  Wallet
-                </label>
-                <label htmlFor="addAccount" className="titleLabel labelW">
-                  Usuario
-                </label>
+                <label className="titleLabel labelW">EOA</label>
+                <label className="titleLabel labelW">Smart Account</label>
+                <label className="titleLabel labelW">Nombre</label>
+                <label className="titleLabel labelW">Rol</label> {/* Nueva etiqueta para Rol */}
                 <br></br>
                 <input
-                  id="addAccount"
                   className="inputText"
                   type="text"
-                  placeholder="Dirección de Ethereum"
-                  value={newUser}
-                  onChange={(e) => setNewUser(e.target.value)}
+                  placeholder="Dirección EOA de Ethereum"
+                  value={newEOA}
+                  onChange={(e) => setNewEOA(e.target.value)}
                 />
                 <input
-                  id="addUserName"
+                  className="inputText"
+                  type="text"
+                  placeholder="Dirección de Smart Account"
+                  value={newSmartAccount}
+                  onChange={(e) => setNewSmartAccount(e.target.value)}
+                  style={{ marginLeft: "10px" }}
+                />
+                <input
                   className="inputText"
                   type="text"
                   placeholder="Nombre del Usuario"
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
                   style={{ marginLeft: "10px" }}
                 />
+                {/* Campo de selección para Rol */}
+                <select
+                  className="inputText"
+                  value={newRole}
+                  onChange={(e) => setNewRole(parseInt(e.target.value))}
+                  style={{ marginLeft: "10px", padding: "8px" }}
+                >
+                  <option value={0}>Usuario</option>
+                  <option value={1}>Administrador</option>
+                </select>
                 <button
-                  id="addAccountButton"
                   className="iconAction"
                   onClick={addUserToWhitelist}
                   style={{ marginLeft: "10px" }}
@@ -532,7 +695,9 @@ export default function AdminPanel() {
               <table id="userTable" cellSpacing="0">
                 <thead>
                   <tr>
-                    <th align="center">Dirección</th>
+                    
+                    <th align="center">EOA</th>
+                    <th align="center">Smart Account</th>
                     <th align="center">Nombre</th>
                     <th align="center">Rol</th>
                     <th align="center">Acciones</th>
@@ -541,32 +706,33 @@ export default function AdminPanel() {
                 <tbody>
                   {whitelistedUsers.length > 0 ? (
                     whitelistedUsers.map((user) => (
-                      <tr key={user.address}>
-                        <td align="center">{user.address}</td>
+                      <tr key={user.smartAccount}>
+                        <td align="center">{user.eoa}</td>
+                        <td align="center">{user.smartAccount}</td>                        
                         <td align="center">{user.name}</td>
                         <td align="center">{user.isAdmin ? "Administrador" : "Usuario"}</td>
                         <td align="center">
                           {/* Mostrar botones solo si el usuario conectado es un administrador y no está gestionando su propia cuenta */}
-                          {isAdmin && user.address !== userEOA && (
+                          {isAdmin && user.smartAccount !== userAccount && (
                             <>
                               {/* Botón de Toggle Admin */}
                               <button
                                 className="iconAction"
                                 style={{ marginLeft: "10px" }}
-                                onClick={() => toggleAdmin(user.address, user.isAdmin)}
+                                onClick={() => toggleAdmin(user.smartAccount, user.isAdmin)}
                                 disabled={isTransactionPending}
                               >
                                 {user.isAdmin ? (
                                   <img src="../images/icon_remove_admin.svg" alt="Revocar rol de administrador" />
                                 ) : (
-                                  <img src="../images/icon_remove_admin.svg" alt="Conceder rol de administrador" />
+                                  <img src="../images/icon_add_admin.svg" alt="Conceder rol de administrador" />
                                 )}
                               </button>
 
                               {/* Botón para Eliminar Usuario */}
                               <button
                                 className="iconAction"
-                                onClick={() => removeUserFromWhitelist(user.address)}
+                                onClick={() => removeUserFromWhitelist(user.smartAccount)}
                                 style={{ marginLeft: "10px" }}
                                 disabled={isTransactionPending}
                               >
@@ -579,7 +745,7 @@ export default function AdminPanel() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="4" align="center">
+                      <td colSpan="5" align="center">
                         No hay usuarios en la whitelist.
                       </td>
                     </tr>
@@ -596,7 +762,7 @@ export default function AdminPanel() {
               onClick={async () => {
                 try {
                   const contract = new ethers.Contract(contractAddress, contractABI, signer);
-                  await fetchAdminAndWhitelist(contract, userEOA);
+                  await fetchAdminAndWhitelist(contract, userAccount);
                 } catch (error) {
                   console.error("Error al refrescar la lista:", error);
                 }
@@ -606,6 +772,31 @@ export default function AdminPanel() {
               Refrescar Lista
             </button>
           </div>
+
+          {/* Sección para Manejar Transacciones Adicionales */}
+          {userEOA && dataJson && isWhitelisted && status === 'notSigned' && (
+            <div className="transactionSection">
+              <div className="centerText margin20">
+                <button
+                  id="actionButton"
+                  onClick={sendTransactionWithSDK} // Usar el método del SDK
+                  disabled={isTransactionPending}
+                >
+                  Firmar Documento
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Mostrar Hash de Transacción */}
+          <div className="centerText margin20">
+            {transactionHash && <p>Transacción exitosa: {transactionHash}</p>}
+          </div>
+
+          {/* Mensajes de Estado */}
+          {status === 'error' && (
+            <p style={{ color: 'red' }}>Ocurrió un error. Inténtalo de nuevo.</p>
+          )}
         </div>
       </div>
 
@@ -614,3 +805,9 @@ export default function AdminPanel() {
     </div>
   );
 }
+
+// Función para codificar la llamada a la función del contrato
+const encodeFunctionCall = (functionName, params) => {
+  const iface = new ethers.utils.Interface(contractABI);
+  return iface.encodeFunctionData(functionName, params);
+};

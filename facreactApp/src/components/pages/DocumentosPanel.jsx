@@ -1,7 +1,7 @@
 // src/components/pages/DocumentosPanel.jsx
 import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
-import UserInfo from "../UserInfo";
+import UserInfo from "../UserInfoDocumentos.jsx";
 import WalletConnect from "../WalletConnect";
 import Loader from "../Loader";
 

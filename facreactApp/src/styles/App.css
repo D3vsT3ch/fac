@@ -109,7 +109,7 @@ body {
     background-color: rgba(0,19,38,0.8);
     position: absolute;
     top: 30px;
-    right: 0px;
+    right: 0;
     width: auto;
     height: auto;
     display: inline-block;
@@ -120,6 +120,26 @@ body {
    
 }
 
+#userContainerAdmin {
+ 
+  background-color: rgba(0,19,38,0.8);
+  position: absolute;
+  top: 30px;
+  right: 100px;
+  width: auto;
+  height: auto;
+  display: inline-block;
+  padding: 10px;
+  padding-left: 15px;
+  border-top-left-radius: 30px;
+  border-bottom-left-radius: 30px;
+ 
+}
+
+
+#userContainerAdmin img,
+#userContainerAdmin strong,
+#userContainerAdmin div,
 #userContainer img,
 #userContainer strong,
 #userContainer div {
@@ -173,7 +193,7 @@ body {
 }
 
 .inputText {
-  width: calc(50% - 60px);
+  width: calc(25% - 30px);
   height: 49px;
   background-color: #bbbdc4;
   padding: 10px;
@@ -492,12 +512,7 @@ button:disabled {
   text-align: center;
 }
 
-/* Clase para el mensaje de sin usuarios */
-#userTable td[colspan="4"] {
-  padding: 20px;
-  font-style: italic;
-  color: #ccc;
-}
+
 
 /* Ajustes para los inputs adicionales */
 .container-input {
@@ -518,7 +533,7 @@ button:disabled {
 
 .labelW{
   display: inline-block;
-  width: calc(50% - 50px);
+  width: calc(25% - 15px);
   font-size: 20px;
 }
 
