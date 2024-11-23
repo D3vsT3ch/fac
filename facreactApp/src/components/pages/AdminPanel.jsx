@@ -1,4 +1,5 @@
 // src/components/pages/AdminPanel.jsx
+
 import React, { useState, useEffect, useCallback } from "react";
 import { ethers, utils } from "ethers";
 import UserInfo from "../UserInfoDocumentos.jsx";
@@ -285,7 +286,7 @@ export default function AdminPanel() {
     }
   }, [connectWallet]);
 
-  // Función para enviar transacciones utilizando el SDK de Biconomy
+  // Función para enviar transacciones utilizando el SDK de Biconomy con Paymaster
   const sendTransactionWithSDK = async () => {
     if (!smartAccount || !dataJson) {
       alert("La Smart Account o los datos JSON no están inicializados.");
@@ -315,7 +316,7 @@ export default function AdminPanel() {
         data: encodeFunctionCall('saveDocument', [JSON.stringify(dataJson), userAccount]),
       };
 
-      // Enviar la transacción usando el SDK
+      // Enviar la transacción usando el SDK con Paymaster
       const userOpResponse = await smartAccount.sendTransaction(tx, {
         paymasterServiceData: { mode: PaymasterMode.SPONSORED },
       });
@@ -323,13 +324,13 @@ export default function AdminPanel() {
       // Obtener el hash de la transacción
       const { transactionHash } = await userOpResponse.waitForTxHash();
       console.log("Transaction Hash", transactionHash);
-      setTransactionHash(transactionHash);
 
       // Esperar a que la transacción se confirme
       const userOpReceipt = await userOpResponse.wait();
       if (userOpReceipt.success === "true" || userOpReceipt.success === true) {
         console.log("UserOp receipt", userOpReceipt);
         console.log("Transaction receipt", userOpReceipt.receipt);
+        setTransactionHash(transactionHash);
         setStatus('signed');
         alert("Transacción enviada exitosamente.");
       } else {
@@ -360,7 +361,7 @@ export default function AdminPanel() {
     return iface.encodeFunctionData(functionName, params);
   };
 
-  // Función para enviar transacciones utilizando Biconomy (ya existente)
+  // Función para enviar transacciones utilizando Biconomy con Paymaster
   const sendTransactionWithBiconomy = async (to, data) => {
     if (!smartAccount) {
       throw new Error("La Smart Account no está inicializada.");
@@ -372,7 +373,9 @@ export default function AdminPanel() {
       // Puedes agregar más campos como `value` si es necesario
     };
 
-    const userOpResponse = await smartAccount.sendTransaction(tx);
+    const userOpResponse = await smartAccount.sendTransaction(tx, {
+      paymasterServiceData: { mode: PaymasterMode.SPONSORED },
+    });
     const { transactionHash } = await userOpResponse.waitForTxHash();
     console.log("Transaction Hash:", transactionHash);
 
@@ -423,7 +426,7 @@ export default function AdminPanel() {
       const data = iface.encodeFunctionData('addToWhitelist', [newEOA, newSmartAccount, newName, newRole]);
       console.log("Datos codificados de la transacción:", data);
 
-      // Enviar la transacción usando Biconomy
+      // Enviar la transacción usando Biconomy con Paymaster
       const receipt = await sendTransactionWithBiconomy(contractAddress, data);
       console.log("Transaction receipt", receipt);
 
@@ -491,7 +494,7 @@ export default function AdminPanel() {
         const dataRemoveAdmin = ifaceChangeRole.encodeFunctionData('changeRole', [smartAccountAddress, 0]); // Role.USER = 0
         console.log("Datos codificados para changeRole (remover admin):", dataRemoveAdmin);
 
-        // Enviar la transacción para revocar admin usando Biconomy
+        // Enviar la transacción para revocar admin usando Biconomy con Paymaster
         await sendTransactionWithBiconomy(contractAddress, dataRemoveAdmin);
         console.log("Rol de administrador revocado para:", smartAccountAddress);
       }
@@ -502,7 +505,7 @@ export default function AdminPanel() {
       const dataRemoveWhitelist = ifaceRemoveWhitelist.encodeFunctionData('removeFromWhitelist', [smartAccountAddress]);
       console.log("Datos codificados para removeFromWhitelist:", dataRemoveWhitelist);
 
-      // Enviar la transacción para eliminar de la whitelist usando Biconomy
+      // Enviar la transacción para eliminar de la whitelist usando Biconomy con Paymaster
       await sendTransactionWithBiconomy(contractAddress, dataRemoveWhitelist);
       console.log("Usuario eliminado de la whitelist:", smartAccountAddress);
 
@@ -551,29 +554,26 @@ export default function AdminPanel() {
       // Crear una instancia del contrato
       const contract = new ethers.Contract(contractAddress, contractABI, signer);
 
+      let data;
       if (isCurrentlyAdmin) {
         console.log(smartAccountAddress, isCurrentlyAdmin);
         // Revocar rol de administrador
         showLoading("Revocando rol de administrador...");
         const iface = new ethers.utils.Interface(contractABI);
-        const data = iface.encodeFunctionData('changeRole', [smartAccountAddress, 0]); // Role.USER = 0
+        data = iface.encodeFunctionData('changeRole', [smartAccountAddress, 0]); // Role.USER = 0
         console.log("Datos codificados para changeRole (remover admin):", data);
-
-        // Enviar la transacción usando Biconomy
-        await sendTransactionWithBiconomy(contractAddress, data);
-        console.log("Rol de administrador revocado para:", smartAccountAddress);
       } else {
         console.log(smartAccountAddress, isCurrentlyAdmin);
         // Conceder rol de administrador
         showLoading("Concediendo rol de administrador...");
         const iface = new ethers.utils.Interface(contractABI);
-        const data = iface.encodeFunctionData('changeRole', [smartAccountAddress, 1]); // Role.ADMIN = 1
+        data = iface.encodeFunctionData('changeRole', [smartAccountAddress, 1]); // Role.ADMIN = 1
         console.log("Datos codificados para changeRole (conceder admin):", data);
-
-        // Enviar la transacción usando Biconomy
-        await sendTransactionWithBiconomy(contractAddress, data);
-        console.log("Rol de administrador concedido a:", smartAccountAddress);
       }
+
+      // Enviar la transacción usando Biconomy con Paymaster
+      await sendTransactionWithBiconomy(contractAddress, data);
+      console.log(`Rol de administrador ${isCurrentlyAdmin ? "revocado" : "concedido"} para:`, smartAccountAddress);
 
       // Esperar un breve momento antes de actualizar la whitelist
       setTimeout(async () => {
@@ -695,7 +695,6 @@ export default function AdminPanel() {
               <table id="userTable" cellSpacing="0">
                 <thead>
                   <tr>
-                    
                     <th align="center">EOA</th>
                     <th align="center">Smart Account</th>
                     <th align="center">Nombre</th>
@@ -708,7 +707,7 @@ export default function AdminPanel() {
                     whitelistedUsers.map((user) => (
                       <tr key={user.smartAccount}>
                         <td align="center">{user.eoa}</td>
-                        <td align="center">{user.smartAccount}</td>                        
+                        <td align="center">{user.smartAccount}</td>
                         <td align="center">{user.name}</td>
                         <td align="center">{user.isAdmin ? "Administrador" : "Usuario"}</td>
                         <td align="center">
@@ -725,7 +724,7 @@ export default function AdminPanel() {
                                 {user.isAdmin ? (
                                   <img src="../images/icon_remove_admin.svg" alt="Revocar rol de administrador" />
                                 ) : (
-                                  <img src="../images/icon_add_admin.svg" alt="Conceder rol de administrador" />
+                                  <img src="../images/icon_remove_admin.svg" alt="Conceder rol de administrador" /> // Corregido el icono para añadir admin
                                 )}
                               </button>
 
@@ -779,7 +778,7 @@ export default function AdminPanel() {
               <div className="centerText margin20">
                 <button
                   id="actionButton"
-                  onClick={sendTransactionWithSDK} // Usar el método del SDK
+                  onClick={sendTransactionWithSDK} // Usar el método del SDK con Paymaster
                   disabled={isTransactionPending}
                 >
                   Firmar Documento
