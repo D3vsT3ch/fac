@@ -12,7 +12,7 @@ const App = () => {
       
      
       {/* Puedes agregar más rutas aquí */}
-      <Route path="*" element={<div>Página no encontrada</div>} />
+      
       <Route path="/" element={<MainPage />} />
       <Route
         path="/admin"

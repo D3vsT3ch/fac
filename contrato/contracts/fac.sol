@@ -8,13 +8,16 @@ contract Fac is Initializable, ContextUpgradeable {
     address public owner;
 
     // Definición de roles
-    enum Role { USER, ADMIN }
+    enum Role {
+        USER,
+        ADMIN
+    }
 
     struct User {
-        address eoa;            // Dirección EOA del usuario
-        address smartAccount;   // Dirección de la Smart Account asociada
+        address eoa; // Dirección EOA del usuario
+        address smartAccount; // Dirección de la Smart Account asociada
         string name;
-        Role role;              // Rol del usuario: USER o ADMIN
+        Role role; // Rol del usuario: USER o ADMIN
     }
 
     // Mapeo para la whitelist: smartAccount => User
@@ -34,20 +37,37 @@ contract Fac is Initializable, ContextUpgradeable {
     bytes32[] private documentHashes;
 
     // Eventos
-    event UserWhitelisted(address indexed smartAccount, address indexed eoa, string name, Role role);
-    event UserRemovedFromWhitelist(address indexed smartAccount, address indexed eoa);
-    event DocumentSaved(bytes32 indexed docHash, address indexed uploader, address indexed eoa, uint256 timestamp);
+    event UserWhitelisted(
+        address indexed smartAccount,
+        address indexed eoa,
+        string name,
+        Role role
+    );
+    event UserRemovedFromWhitelist(
+        address indexed smartAccount,
+        address indexed eoa
+    );
+    event DocumentSaved(
+        bytes32 indexed docHash,
+        address indexed uploader,
+        address indexed eoa,
+        uint256 timestamp
+    );
     event RoleChanged(address indexed smartAccount, Role oldRole, Role newRole); // Nuevo evento
 
     // Modificadores
     modifier onlyOwner() virtual {
-        require(_msgSender() == owner, "Solo el propietario puede realizar esta accion");
+        require(
+            _msgSender() == owner,
+            "Solo el propietario puede realizar esta accion"
+        );
         _;
     }
 
     modifier onlyAdmin() virtual {
         require(
-            whiteList[_msgSender()].smartAccount != address(0) && whiteList[_msgSender()].role == Role.ADMIN,
+            whiteList[_msgSender()].smartAccount != address(0) &&
+                whiteList[_msgSender()].role == Role.ADMIN,
             "Solo administradores pueden realizar esta accion"
         );
         _;
@@ -61,10 +81,20 @@ contract Fac is Initializable, ContextUpgradeable {
         _;
     }
 
+    modifier onlyWhitelistedEOA(address _eoa) virtual {
+        require(
+            whiteList[_msgSender()].eoa == _eoa,
+            "EOA no coincide con la cuenta inteligente"
+        );
+        _;
+    }
+
     // Nuevo modificador para propietario o administrador
     modifier onlyOwnerOrAdmin() virtual {
         require(
-            _msgSender() == owner || (whiteList[_msgSender()].smartAccount != address(0) && whiteList[_msgSender()].role == Role.ADMIN),
+            _msgSender() == owner ||
+                (whiteList[_msgSender()].smartAccount != address(0) &&
+                    whiteList[_msgSender()].role == Role.ADMIN),
             "Solo el propietario o administradores pueden realizar esta accion"
         );
         _;
@@ -86,7 +116,12 @@ contract Fac is Initializable, ContextUpgradeable {
             role: Role.ADMIN
         });
 
-        emit UserWhitelisted(_msgSender(), _msgSender(), "Propietario", Role.ADMIN);
+        emit UserWhitelisted(
+            _msgSender(),
+            _msgSender(),
+            "Propietario",
+            Role.ADMIN
+        );
     }
 
     /**
@@ -100,8 +135,14 @@ contract Fac is Initializable, ContextUpgradeable {
         Role _role
     ) public onlyOwnerOrAdmin {
         require(_eoa != address(0), "EOA no puede ser la direccion cero");
-        require(_smartAccount != address(0), "Smart Account no puede ser la direccion cero");
-        require(whiteList[_smartAccount].smartAccount == address(0), "Smart Account ya esta en la whitelist");
+        require(
+            _smartAccount != address(0),
+            "Smart Account no puede ser la direccion cero"
+        );
+        require(
+            whiteList[_smartAccount].smartAccount == address(0),
+            "Smart Account ya esta en la whitelist"
+        );
 
         whiteList[_smartAccount] = User({
             eoa: _eoa,
@@ -117,9 +158,14 @@ contract Fac is Initializable, ContextUpgradeable {
      * @dev Elimina un usuario de la whitelist utilizando su Smart Account.
      * Solo puede ser llamado por un administrador o el propietario.
      */
-    function removeFromWhitelist(address _smartAccount) public onlyOwnerOrAdmin {
+    function removeFromWhitelist(
+        address _smartAccount
+    ) public onlyOwnerOrAdmin {
         require(_smartAccount != owner, "No se puede eliminar al propietario");
-        require(whiteList[_smartAccount].smartAccount != address(0), "Smart Account no esta en la whitelist");
+        require(
+            whiteList[_smartAccount].smartAccount != address(0),
+            "Smart Account no esta en la whitelist"
+        );
 
         address eoa = whiteList[_smartAccount].eoa;
         delete whiteList[_smartAccount];
@@ -131,8 +177,14 @@ contract Fac is Initializable, ContextUpgradeable {
      * @dev Cambia el rol de un usuario existente en la whitelist.
      * Solo puede ser llamado por un administrador o el propietario.
      */
-    function changeRole(address _smartAccount, Role _newRole) public onlyOwnerOrAdmin {
-        require(whiteList[_smartAccount].smartAccount != address(0), "Smart Account no esta en la whitelist");
+    function changeRole(
+        address _smartAccount,
+        Role _newRole
+    ) public onlyOwnerOrAdmin {
+        require(
+            whiteList[_smartAccount].smartAccount != address(0),
+            "Smart Account no esta en la whitelist"
+        );
         Role oldRole = whiteList[_smartAccount].role;
         whiteList[_smartAccount].role = _newRole;
 
@@ -142,11 +194,19 @@ contract Fac is Initializable, ContextUpgradeable {
     /**
      * @dev Guarda un documento en el contrato. Solo puede ser llamado por usuarios en la whitelist.
      */
-    function saveDocument(string memory _data, address _eoa) public onlyWhitelisted returns (bytes32) {
-        require(isWhitelisted(_eoa), unicode"El EOA no está en la lista blanca");
-
-        bytes32 docHash = keccak256(abi.encodePacked(_data, block.timestamp, _eoa));
-        documents[docHash] = Document(block.timestamp, _data, _msgSender(), _eoa);
+    function saveDocument(
+        string memory _data,
+        address _eoa
+    ) public onlyWhitelisted onlyWhitelistedEOA(_eoa) returns (bytes32) {
+        bytes32 docHash = keccak256(
+            abi.encodePacked(_data, block.timestamp, _eoa)
+        );
+        documents[docHash] = Document(
+            block.timestamp,
+            _data,
+            _msgSender(),
+            _eoa
+        );
         documentHashes.push(docHash);
         emit DocumentSaved(docHash, _msgSender(), _eoa, block.timestamp);
         return docHash;
@@ -155,7 +215,9 @@ contract Fac is Initializable, ContextUpgradeable {
     /**
      * @dev Obtiene los detalles de un documento por su hash.
      */
-    function getDocument(bytes32 _docHash) public view returns (uint256, string memory, address, address) {
+    function getDocument(
+        bytes32 _docHash
+    ) public view returns (uint256, string memory, address, address) {
         Document memory doc = documents[_docHash];
         require(doc.timestamp != 0, "Documento no existe");
         return (doc.timestamp, doc.data, doc.uploader, doc.eoa);

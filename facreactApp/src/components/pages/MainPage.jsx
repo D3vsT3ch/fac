@@ -20,6 +20,7 @@ export default function MainPage() {
   const [smartAccount, setSmartAccount] = useState(null);
   const [signer, setSigner] = useState(null);
   const [transactionHash, setTransactionHash] = useState(null);
+  const [documentHash, setDocumentHash] = useState(null); // Nuevo estado para docHash
   const [dataJson, setDataJson] = useState(null);
   const [status, setStatus] = useState('notSigned');
   const [isWhitelisted, setIsWhitelisted] = useState(false);
@@ -159,6 +160,7 @@ export default function MainPage() {
           setUserEOA(null);
           setUserAccount(null);
           setIsWhitelisted(false);
+          setDocumentHash(null); // Resetear docHash
           console.log("Wallet desconectada");
         }
       };
@@ -202,6 +204,7 @@ export default function MainPage() {
     try {
       setIsTransactionPending(true);
       setStatus('signing');
+      setDocumentHash(null); // Resetear docHash al iniciar nueva transacción
       showLoading("Firmando la transacción...");
 
       console.log("Enviando transacción utilizando el SDK de Biconomy...");
@@ -209,7 +212,7 @@ export default function MainPage() {
       // Preparar los datos de la transacción
       const tx = {
         to: contractAddress,
-        data: encodeFunctionCall('saveDocument', [JSON.stringify(dataJson), userAccount]),
+        data: encodeFunctionCall('saveDocument', [JSON.stringify(dataJson), userEOA]),
       };
 
       // Enviar la transacción usando el SDK
@@ -223,12 +226,37 @@ export default function MainPage() {
 
       // Esperar a que la transacción se confirme
       const userOpReceipt = await userOpResponse.wait();
-      if (userOpReceipt.success === "true") {
+
+      // Agregar depuración para verificar el valor de userOpReceipt.success
+      console.log("userOpReceipt.success:", userOpReceipt.success, "Type:", typeof userOpReceipt.success);
+
+      if (userOpReceipt.success) { // Corregido para verificar el valor booleano
         console.log("UserOp receipt", userOpReceipt);
         console.log("Transaction receipt", userOpReceipt.receipt);
         setTransactionHash(transactionHash);
         setStatus('signed');
         alert("Transacción enviada exitosamente.");
+
+        // Parsear los logs para encontrar el evento DocumentSaved y obtener el docHash
+        const iface = new ethers.utils.Interface(contractABI);
+        const receipt = userOpReceipt.receipt; // Asegúrate de que este campo contenga los logs
+
+        const logs = receipt.logs.map(log => {
+          try {
+            return iface.parseLog(log);
+          } catch (e) {
+            return null;
+          }
+        }).filter(log => log !== null && log.name === 'DocumentSaved');
+
+        if (logs.length > 0) {
+          const docHash = logs[0].args.docHash;
+          console.log("Document Hash:", docHash);
+          setDocumentHash(docHash);
+        } else {
+          console.warn("No se encontró el evento DocumentSaved en los logs.");
+        }
+
       } else {
         throw new Error("La transacción falló.");
       }
@@ -270,6 +298,7 @@ export default function MainPage() {
                 </div>
                 <div id="jsonContent">
                   {transactionHash && <p>Transacción exitosa: {transactionHash}</p>}
+                  {documentHash && <p>Hash del Documento: {documentHash}</p>}
                   {!dataJson && <p>No se proporcionó JSON en la URL.</p>}
                   {dataJson && (
                     <div>
