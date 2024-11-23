@@ -273,6 +273,16 @@ export default function DocumentosPanel() {
         }
     }, [searchHash, contract, showLoading, hideLoading]);
 
+    // Función para validar si una cadena es JSON
+    const isValidJson = (str) => {
+        try {
+            JSON.parse(str);
+        } catch (e) {
+            return false;
+        }
+        return true;
+    };
+
     // useEffect para manejar cambios en la whitelist y cargar documentos
     useEffect(() => {
         if (contract && provider && isWhitelisted) {
@@ -352,31 +362,30 @@ export default function DocumentosPanel() {
                         <div className="titleAdmin">Documentos</div>
                         <p></p>
 
-                         {/* Campo de Búsqueda */}
-                         <div className="search-container" style={{ textAlign: 'center', marginBottom: '20px' }}>
-                                        <label  className="titleLabel labelW" style={{ marginRight: '340px' }}>
-                                            Buscar Documento por Hash:
-                                        </label>
-                                        <br></br>
-                                        <input
-                                            className="inputText"
-                                            type="text"
-                                            id="searchHash"
-                                            value={searchHash}
-                                            onChange={(e) => setSearchHash(e.target.value)}
-                                            placeholder="Ingrese el hash del documento"
-                                            
-                                        />
-                                        <button
-                                            onClick={handleSearch}
-                                             className="iconAction"
-                                        >
-                                              <img src="../images/icon_search.svg" alt="Buscar" />
-                                        </button>
-                                    </div>
-                        
+                        {/* Campo de Búsqueda */}
+                        <div className="search-container" style={{ textAlign: 'center', marginBottom: '20px' }}>
+                            <label className="titleLabel labelW" style={{ marginRight: '340px' }}>
+                                Buscar Documento por Hash:
+                            </label>
+                            <br />
+                            <input
+                                className="inputText"
+                                type="text"
+                                id="searchHash"
+                                value={searchHash}
+                                onChange={(e) => setSearchHash(e.target.value)}
+                                placeholder="Ingrese el hash del documento"
+                            />
+                            <button
+                                onClick={handleSearch}
+                                className="iconAction"
+                            >
+                                <img src="../images/icon_search.svg" alt="Buscar" />
+                            </button>
+                        </div>
+
                         {/* Eliminado el campo de búsqueda */}
-                        
+
                         <div className="space50"></div>
 
                         {/* Verificar si el usuario está en la whitelist */}
@@ -433,8 +442,6 @@ export default function DocumentosPanel() {
                                     {/* Espacio entre la tabla y el buscador */}
                                     <div className="space50"></div>
 
-                                   
-
                                     {/* Mostrar mensaje de error si existe */}
                                     {searchError && (
                                         <div className="error-message" style={{ color: 'red', marginBottom: '20px' }}>
@@ -443,14 +450,28 @@ export default function DocumentosPanel() {
                                     )}
                                 </div>
 
-                                <div className="flex1" style={{marginBottom:"5px"}}>
-                                    <div id="containerEnter" style={{ margin: "0px", height: "100%", marginRight: "60px"  }}>
+                                <div className="flex1" style={{ marginBottom: "5px" }}>
+                                    <div id="containerEnter" style={{ margin: "0px", height: "100%", marginRight: "60px" }}>
                                         <div id="online" style={{ opacity: 1 }}>
                                             <span>Detalle</span>
                                         </div>
-                                        <div id="jsonContent" style={{ height: "60%" }}>
+                                        <div id="jsonContent" style={{ height: "60%", overflow: 'auto', padding: '20px', backgroundColor: '#ffffff', borderRadius: '8px', boxShadow: '0 0 10px rgba(0, 0, 0, 0.1)' }}>
                                             {selectedDocument ? (
-                                                <pre>{JSON.stringify(selectedDocument, null, 2)}</pre>
+                                                <div>
+                                                    {/* Mostrar todo el documento en formato JSON con envoltura de texto */}
+                                                    <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word' }}>
+                                                        {JSON.stringify(selectedDocument, null, 2)}
+                                                    </pre>
+                                                    {/* Mostrar el campo 'data' de forma separada y formateada */}
+                                                    <div style={{ marginTop: '20px' }}>
+                                                        <h3>Detalles del Data</h3>
+                                                        <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', backgroundColor: '#f5f5f5', padding: '10px', borderRadius: '5px' }}>
+                                                            {isValidJson(selectedDocument.data)
+                                                                ? JSON.stringify(JSON.parse(selectedDocument.data), null, 2)
+                                                                : selectedDocument.data}
+                                                        </pre>
+                                                    </div>
+                                                </div>
                                             ) : (
                                                 <p>Selecciona un documento para ver los detalles.</p>
                                             )}
