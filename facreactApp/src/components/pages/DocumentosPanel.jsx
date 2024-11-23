@@ -1,5 +1,5 @@
 // src/components/pages/DocumentosPanel.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
 import UserInfo from "../UserInfoDocumentos.jsx";
 import WalletConnect from "../WalletConnect";
@@ -28,20 +28,46 @@ export default function DocumentosPanel() {
     const [documents, setDocuments] = useState([]); // Lista de documentos
     const [selectedDocument, setSelectedDocument] = useState(null); // Documento seleccionado
 
+    const [isWhitelisted, setIsWhitelisted] = useState(false); // Estado para verificar whitelist
+
+    const [searchHash, setSearchHash] = useState(''); // Estado para el input de búsqueda
+    const [searchError, setSearchError] = useState(null); // Estado para manejar errores de búsqueda
+
     // Función para mostrar el loader
-    const showLoading = (message) => {
+    const showLoading = useCallback((message) => {
         console.log("Mostrando loader:", message);
         setLoading(true);
-    };
+    }, []);
 
     // Función para ocultar el loader
-    const hideLoading = () => {
+    const hideLoading = useCallback(() => {
         console.log("Ocultando loader");
         setLoading(false);
-    };
+    }, []);
+
+    // Función para verificar directamente si la cuenta está en la whitelist
+    const checkWhitelistDirectly = useCallback(async (contractInstance, account) => {
+        if (!account) {
+            console.error("No se proporcionó una cuenta para verificar la whitelist.");
+            setIsWhitelisted(false);
+            return;
+        }
+
+        try {
+            showLoading("Verificando whitelist...");
+            const whitelisted = await contractInstance.isWhitelisted(account);
+            console.log(`El usuario ${account} está en la whitelist:`, whitelisted);
+            setIsWhitelisted(whitelisted);
+        } catch (error) {
+            console.error("Error al verificar la whitelist directamente:", error);
+            setIsWhitelisted(false);
+        } finally {
+            hideLoading();
+        }
+    }, [showLoading, hideLoading]);
 
     // Función para conectar la wallet
-    const connectWallet = async () => {
+    const connectWallet = useCallback(async () => {
         if (window.ethereum) {
             try {
                 showLoading("Conectando wallet...");
@@ -91,12 +117,14 @@ export default function DocumentosPanel() {
                 console.log("Owner Address obtenido:", lowerOwnerAddress);
 
                 // Verificar si el usuario es admin
-                const adminStatus = await contractInstance.isAdmin(lowerEoaAddress);
+                const adminStatus = await contractInstance.isAdmin(address.toLowerCase()); // Corregido aquí
                 setIsAdmin(adminStatus);
                 console.log("¿Es admin?:", adminStatus);
 
-                // Cargar los documentos después de conectar
-                await fetchDocuments(contractInstance, providerInstance);
+                // Verificar si el usuario está en la whitelist directamente
+                await checkWhitelistDirectly(contractInstance, address.toLowerCase());
+
+                hideLoading();
 
             } catch (error) {
                 console.error("Error al conectar la wallet:", error);
@@ -106,10 +134,10 @@ export default function DocumentosPanel() {
         } else {
             alert("Por favor, instala MetaMask.");
         }
-    };
+    }, [showLoading, hideLoading, checkWhitelistDirectly]);
 
     // Función para enviar transacciones utilizando Biconomy
-    const sendTransactionWithBiconomy = async (to, data) => {
+    const sendTransactionWithBiconomy = useCallback(async (to, data) => {
         if (!smartAccount) {
             throw new Error("La Smart Account no está inicializada.");
         }
@@ -117,7 +145,7 @@ export default function DocumentosPanel() {
         const tx = {
             to,
             data,
-            // Puedes agregar más campos como `value` si es necesario
+            // Puedes agregar más campos como value si es necesario
         };
 
         const userOpResponse = await smartAccount.sendTransaction(tx);
@@ -133,10 +161,10 @@ export default function DocumentosPanel() {
         console.log("UserOp receipt:", userOpReceipt);
         console.log("Transaction receipt:", userOpReceipt.receipt);
         return userOpReceipt.receipt;
-    };
+    }, [smartAccount]);
 
     // Función para obtener todos los documentos
-    const fetchDocuments = async (contractInstance, providerInstance) => {
+    const fetchDocuments = useCallback(async (contractInstance, providerInstance) => {
         if (!contractInstance || !providerInstance) {
             console.error("Contrato o proveedor no está inicializado.");
             return;
@@ -152,8 +180,8 @@ export default function DocumentosPanel() {
 
             // Llamar a la función getAllDocuments del contrato
             console.log("Llamando a getAllDocuments...");
-            const [documentHashes, timestamps, datas, uploaders] = await contractInstance.getAllDocuments();
-            console.log("Datos obtenidos de getAllDocuments:", { documentHashes, timestamps, datas, uploaders });
+            const [documentHashes, timestamps, datas, uploaders, eoaList] = await contractInstance.getAllDocuments(); // Añadido eoaList
+            console.log("Datos obtenidos de getAllDocuments:", { documentHashes, timestamps, datas, uploaders, eoaList });
 
             // Mapear los datos a un formato más manejable
             const docs = documentHashes.map((hash, index) => {
@@ -165,6 +193,7 @@ export default function DocumentosPanel() {
                     timestamp: new Date(ts * 1000).toLocaleString(),
                     data: datas[index],
                     uploader: uploaders[index],
+                    eoa: eoaList[index], // Añadido eoa
                 };
                 console.log(`Documento ${index}:`, doc);
                 return doc;
@@ -178,10 +207,10 @@ export default function DocumentosPanel() {
         } finally {
             hideLoading();
         }
-    };
+    }, [showLoading, hideLoading]);
 
     // Función para manejar la visualización de un documento
-    const handleViewDocument = async (docHash) => {
+    const handleViewDocument = useCallback(async (docHash) => {
         if (!contract) {
             console.error("Contrato no está inicializado.");
             alert("Contrato no está inicializado.");
@@ -191,13 +220,14 @@ export default function DocumentosPanel() {
         try {
             showLoading("Obteniendo detalles del documento...");
 
-            const [timestamp, data, uploader] = await contract.getDocument(docHash);
+            const [timestamp, data, uploader, eoa] = await contract.getDocument(docHash); // Añadido eoa
             const ts = ethers.BigNumber.isBigNumber(timestamp) ? timestamp.toNumber() : timestamp;
             const docDetails = {
                 hash: docHash,
                 timestamp: new Date(ts * 1000).toLocaleString(),
                 data,
                 uploader,
+                eoa, // Añadido eoa
             };
 
             setSelectedDocument(docDetails);
@@ -208,15 +238,90 @@ export default function DocumentosPanel() {
         } finally {
             hideLoading();
         }
-    };
+    }, [contract, showLoading, hideLoading]);
 
-    // useEffect para cargar documentos cuando el contrato y el proveedor cambien
+    // Función para manejar la búsqueda de un documento por hash
+    const handleSearch = useCallback(async () => {
+        // Reiniciar el estado de error
+        setSearchError(null);
+
+        // Validar el hash ingresado
+        if (!ethers.utils.isHexString(searchHash, 32)) {
+            setSearchError('El hash ingresado no es válido. Debe ser un string hexadecimal de 32 bytes.');
+            return;
+        }
+
+        try {
+            showLoading("Buscando documento...");
+            const [timestamp, data, uploader, eoa] = await contract.getDocument(searchHash);
+            const ts = ethers.BigNumber.isBigNumber(timestamp) ? timestamp.toNumber() : timestamp;
+            const docDetails = {
+                hash: searchHash,
+                timestamp: new Date(ts * 1000).toLocaleString(),
+                data,
+                uploader,
+                eoa,
+            };
+
+            setSelectedDocument(docDetails);
+            console.log("Detalles del documento buscado:", docDetails);
+        } catch (error) {
+            console.error("Error al buscar el documento:", error);
+            setSearchError(`Error al buscar el documento: ${error.message}`);
+        } finally {
+            hideLoading();
+        }
+    }, [searchHash, contract, showLoading, hideLoading]);
+
+    // useEffect para manejar cambios en la whitelist y cargar documentos
     useEffect(() => {
-        if (contract && provider) {
-            console.log("Contrato y proveedor están disponibles. Cargando documentos...");
+        if (contract && provider && isWhitelisted) {
+            console.log("Contrato, proveedor y whitelist confirmados. Cargando documentos...");
             fetchDocuments(contract, provider);
         }
-    }, [contract, provider]);
+    }, [contract, provider, isWhitelisted, fetchDocuments]);
+
+    // Manejar cambios en la cuenta o en la red
+    useEffect(() => {
+        if (window.ethereum) {
+            const handleAccountsChanged = (accounts) => {
+                if (accounts.length > 0) {
+                    setUserEOA(accounts[0].toLowerCase());
+                    console.log("Cuenta cambiada a:", accounts[0]);
+                    // Reconectar para actualizar estados y datos
+                    connectWallet();
+                } else {
+                    setUserEOA(null);
+                    setUserAccount(null);
+                    setOwner(null);
+                    setIsAdmin(false);
+                    setIsWhitelisted(false);
+                    setIsTransactionPending(false);
+                    setDocuments([]);
+                    setSelectedDocument(null);
+                    console.log("Wallet desconectada");
+                }
+            };
+
+            const handleChainChanged = (chainId) => {
+                console.log("Chain cambiada a:", chainId);
+                // Intentar cambiar automáticamente a la red deseada
+                // No recargar la página inmediatamente
+                connectWallet();
+            };
+
+            window.ethereum.on('accountsChanged', handleAccountsChanged);
+            window.ethereum.on('chainChanged', handleChainChanged);
+
+            // Cleanup on unmount
+            return () => {
+                if (window.ethereum.removeListener) {
+                    window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+                    window.ethereum.removeListener('chainChanged', handleChainChanged);
+                }
+            };
+        }
+    }, [connectWallet]);
 
     return (
         <div className="admin-panel-container">
@@ -246,67 +351,115 @@ export default function DocumentosPanel() {
                     <div className="centerText" style={{ height: "calc(100% - 300px)" }}>
                         <div className="titleAdmin">Documentos</div>
                         <p></p>
+
+                         {/* Campo de Búsqueda */}
+                         <div className="search-container" style={{ textAlign: 'center', marginBottom: '20px' }}>
+                                        <label  className="titleLabel labelW" style={{ marginRight: '340px' }}>
+                                            Buscar Documento por Hash:
+                                        </label>
+                                        <br></br>
+                                        <input
+                                            className="inputText"
+                                            type="text"
+                                            id="searchHash"
+                                            value={searchHash}
+                                            onChange={(e) => setSearchHash(e.target.value)}
+                                            placeholder="Ingrese el hash del documento"
+                                            
+                                        />
+                                        <button
+                                            onClick={handleSearch}
+                                             className="iconAction"
+                                        >
+                                              <img src="../images/icon_search.svg" alt="Buscar" />
+                                        </button>
+                                    </div>
                         
                         {/* Eliminado el campo de búsqueda */}
                         
                         <div className="space50"></div>
 
-                        <div className="flexH gap30" style={{ width: "calc(100% - 60px)", marginLeft: "30px", height: "100%" }}>
-                            <div className="flex1">
-                                <label htmlFor="documentsTable" className="titleLabel labelW" style={{ textAlign: "left", marginLeft: "-60px" }}>
-                                    Título Principal
-                                </label>
-                                <br />
-                                <div className="containerScroll">
-                                    <table id="documentsTable" cellSpacing="0">
-                                        <thead>
-                                            <tr>
-                                                <th>Hash del Documento</th>
-                                                <th>Uploader</th>
-                                                <th>Fecha de Subida</th>
-                                                <th>Acciones</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {documents.length > 0 ? (
-                                                documents.map((doc, index) => (
-                                                    <tr key={doc.hash}>
-                                                        <td>{doc.hash}</td>
-                                                        
-                                                        <td>{doc.uploader}</td>
-                                                        <td>{doc.timestamp}</td>
-                                                        <td>
-                                                            <button   className="iconAction" onClick={() => handleViewDocument(doc.hash)}> <img src="../images/icon_eye.svg" alt="ver" /></button>
-                                                            {/* Puedes agregar más acciones aquí */}
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                            ) : (
-                                                <tr>
-                                                    <td colSpan="4">No hay documentos disponibles.</td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
+                        {/* Verificar si el usuario está en la whitelist */}
+                        {!isWhitelisted && userEOA && !loading && (
+                            <div className="permission-denied" style={{ textAlign: 'center', marginTop: '50px' }}>
+                                <p style={{ color: 'red', fontSize: '18px' }}>
+                                    No tienes permisos para acceder al panel de documentos.
+                                </p>
                             </div>
+                        )}
 
-                            <div className="flex1">
-                                <div id="containerEnter" style={{ margin: "0px", height: "calc(100% + 16px)" }}>
-                                    <div id="online" style={{ opacity: 1 }}>
-                                        <span>Detalle</span>
+                        {/* Mostrar el panel de documentos solo si el usuario está en la whitelist */}
+                        {isWhitelisted && (
+                            <div className="flexH gap30" style={{ marginLeft: "30px", height: "100%" }}>
+                                <div className="flex1">
+                                    <label htmlFor="documentsTable" className="titleLabel labelW" style={{ textAlign: "left", marginLeft: "-60px" }}>
+                                        Título Principal
+                                    </label>
+                                    <br />
+                                    <div className="containerScroll">
+                                        <table id="documentsTable" cellSpacing="0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Hash del Documento</th>
+                                                    <th>Uploader</th>
+                                                    <th>Fecha de Subida</th>
+                                                    <th>Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {documents.length > 0 ? (
+                                                    documents.map((doc, index) => (
+                                                        <tr key={doc.hash}>
+                                                            <td>{doc.hash}</td>
+                                                            <td>{doc.uploader}</td>
+                                                            <td>{doc.timestamp}</td>
+                                                            <td>
+                                                                <button className="iconAction" onClick={() => handleViewDocument(doc.hash)}>
+                                                                    <img src="../images/icon_eye.svg" alt="ver" />
+                                                                </button>
+                                                                {/* Puedes agregar más acciones aquí */}
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan="4">No hay documentos disponibles.</td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
                                     </div>
-                                    <div id="jsonContent" style={{ height: "60%" }}>
-                                        {selectedDocument ? (
-                                            <pre>{JSON.stringify(selectedDocument, null, 2)}</pre>
-                                        ) : (
-                                            <p>Selecciona un documento para ver los detalles.</p>
-                                        )}
+
+                                    {/* Espacio entre la tabla y el buscador */}
+                                    <div className="space50"></div>
+
+                                   
+
+                                    {/* Mostrar mensaje de error si existe */}
+                                    {searchError && (
+                                        <div className="error-message" style={{ color: 'red', marginBottom: '20px' }}>
+                                            {searchError}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex1" style={{marginBottom:"5px"}}>
+                                    <div id="containerEnter" style={{ margin: "0px", height: "100%", marginRight: "60px"  }}>
+                                        <div id="online" style={{ opacity: 1 }}>
+                                            <span>Detalle</span>
+                                        </div>
+                                        <div id="jsonContent" style={{ height: "60%" }}>
+                                            {selectedDocument ? (
+                                                <pre>{JSON.stringify(selectedDocument, null, 2)}</pre>
+                                            ) : (
+                                                <p>Selecciona un documento para ver los detalles.</p>
+                                            )}
+                                        </div>
+                                        <button id="connectButton" onClick={() => setSelectedDocument(null)}>Limpiar</button>
                                     </div>
-                                    <button id="connectButton" onClick={() => setSelectedDocument(null)}>Limpiar</button>
                                 </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -317,3 +470,9 @@ export default function DocumentosPanel() {
     );
 
 }
+
+// Función para codificar la llamada a la función del contrato
+const encodeFunctionCall = (functionName, params) => {
+    const iface = new ethers.utils.Interface(contractABI);
+    return iface.encodeFunctionData(functionName, params);
+};
