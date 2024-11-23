@@ -46,9 +46,7 @@ export const networkConfig = {
     symbol: VITE_COIN_SYMBOL, // Símbolo de la moneda
     decimals: 18,
   },
-  blockExplorers: {
-    default: { name: "PolygonScan", url: VITE_BLOCK_EXPLORER_URL }, // Explorador de bloques
-  },
+  blockExplorerUrls: [VITE_BLOCK_EXPLORER_URL], // **Corregido**
 };
 
 // Exporta `requiredChainId` basado en la configuración de la red
