@@ -27,6 +27,19 @@ export default function MainPage() {
   const [isTransactionPending, setIsTransactionPending] = useState(false); // Estado para gestionar transacciones pendientes
   const [owner, setOwner] = useState(null); // Estado para almacenar el owner
 
+  // Definir los parámetros de la red
+  const targetNetwork = {
+    chainId: networkConfig.chainIdHex, // Usar el campo correcto
+    chainName: networkConfig.name,
+    nativeCurrency: {
+      name: networkConfig.nativeCurrency.name,
+      symbol: networkConfig.nativeCurrency.symbol,
+      decimals: networkConfig.nativeCurrency.decimals,
+    },
+    rpcUrls: networkConfig.rpcUrls,
+    blockExplorerUrls: networkConfig.blockExplorerUrls,
+  };
+
   // Parsear parámetros de la URL al montar el componente
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -58,6 +71,36 @@ export default function MainPage() {
     setLoading(false);
   };
 
+  // Función para cambiar a la red deseada
+  const switchToTargetNetwork = async () => {
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: targetNetwork.chainId }],
+      });
+      return true;
+    } catch (switchError) {
+      // Código de error 4902 significa que la cadena no está añadida
+      if (switchError.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [targetNetwork],
+          });
+          return true;
+        } catch (addError) {
+          console.error("Error al agregar la cadena:", addError);
+          alert("No se pudo agregar la red deseada en MetaMask.");
+          return false;
+        }
+      } else {
+        console.error("Error al cambiar la cadena:", switchError);
+        alert("No se pudo cambiar a la red deseada.");
+        return false;
+      }
+    }
+  };
+
   // Función para conectar la wallet
   const connectWallet = async () => {
     if (window.ethereum) {
@@ -77,15 +120,21 @@ export default function MainPage() {
         const { chainId } = await provider.getNetwork();
         console.log("Chain ID del proveedor:", chainId);
         if (chainId !== requiredChainId) {
-          alert(`Por favor, conéctate a la red ${networkConfig.name}.`);
-          return;
+          const switched = await switchToTargetNetwork();
+          if (!switched) {
+            return; // Si no se pudo cambiar la red, salir de la función
+          }
         }
+
+        // Re-obtener el proveedor y signer después de cambiar la red
+        const updatedProvider = new ethers.providers.Web3Provider(window.ethereum);
+        const updatedSigner = updatedProvider.getSigner();
 
         // Inicializar Biconomy con el signer del usuario
         console.log("Inicializando Biconomy...");
-        const sa = await initializeBiconomy(userSigner);
+        const sa = await initializeBiconomy(updatedSigner);
         setSmartAccount(sa);
-        setSigner(userSigner);
+        setSigner(updatedSigner);
 
         // Obtener la dirección de la Smart Account correctamente
         console.log("Obteniendo dirección de la Smart Account...");
@@ -94,7 +143,7 @@ export default function MainPage() {
         console.log("Smart Account conectado:", address);
 
         // Crear una instancia del contrato
-        const contract = new ethers.Contract(contractAddress, contractABI, userSigner);
+        const contract = new ethers.Contract(contractAddress, contractABI, updatedSigner);
 
         // Obtener el owner del contrato
         console.log("Intentando obtener el owner del contrato...");

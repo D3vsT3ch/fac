@@ -35,6 +35,19 @@ export default function AdminPanel() {
   const [status, setStatus] = useState('notSigned');
   const [isWhitelisted, setIsWhitelisted] = useState(false);
 
+  // Definir los parámetros de la red
+  const targetNetwork = {
+    chainId: networkConfig.chainIdHex, // Usar el campo correcto
+    chainName: networkConfig.name,
+    nativeCurrency: {
+      name: networkConfig.nativeCurrency.name,
+      symbol: networkConfig.nativeCurrency.symbol,
+      decimals: networkConfig.nativeCurrency.decimals,
+    },
+    rpcUrls: networkConfig.rpcUrls,
+    blockExplorerUrls: networkConfig.blockExplorerUrls,
+  };
+
   // Parsear parámetros de la URL al montar el componente
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -66,6 +79,36 @@ export default function AdminPanel() {
     setLoading(false);
   };
 
+  // Función para cambiar a la red deseada
+  const switchToTargetNetwork = async () => {
+    try {
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: targetNetwork.chainId }],
+      });
+      return true;
+    } catch (switchError) {
+      // Código de error 4902 significa que la cadena no está añadida
+      if (switchError.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [targetNetwork],
+          });
+          return true;
+        } catch (addError) {
+          console.error("Error al agregar la cadena:", addError);
+          alert("No se pudo agregar la red deseada en MetaMask.");
+          return false;
+        }
+      } else {
+        console.error("Error al cambiar la cadena:", switchError);
+        alert("No se pudo cambiar a la red deseada.");
+        return false;
+      }
+    }
+  };
+
   // Función para conectar la wallet
   const connectWallet = async () => {
     if (window.ethereum) {
@@ -85,15 +128,21 @@ export default function AdminPanel() {
         const { chainId } = await provider.getNetwork();
         console.log("Chain ID del proveedor:", chainId);
         if (chainId !== requiredChainId) {
-          alert(`Por favor, conéctate a la red ${networkConfig.name}.`);
-          return;
+          const switched = await switchToTargetNetwork();
+          if (!switched) {
+            return; // Si no se pudo cambiar la red, salir de la función
+          }
         }
+
+        // Re-obtener el proveedor y signer después de cambiar la red
+        const updatedProvider = new ethers.providers.Web3Provider(window.ethereum);
+        const updatedSigner = updatedProvider.getSigner();
 
         // Inicializar Biconomy con el signer del usuario
         console.log("Inicializando Biconomy...");
-        const sa = await initializeBiconomy(userSigner);
+        const sa = await initializeBiconomy(updatedSigner);
         setSmartAccount(sa);
-        setSigner(userSigner);
+        setSigner(updatedSigner);
 
         // Obtener la dirección de la Smart Account correctamente
         console.log("Obteniendo dirección de la Smart Account...");
@@ -102,7 +151,7 @@ export default function AdminPanel() {
         console.log("Smart Account conectado:", address.toLowerCase());
 
         // Crear una instancia del contrato
-        const contract = new ethers.Contract(contractAddress, contractABI, userSigner);
+        const contract = new ethers.Contract(contractAddress, contractABI, updatedSigner);
 
         // Obtener el owner del contrato
         console.log("Intentando obtener el owner del contrato...");
@@ -269,8 +318,9 @@ export default function AdminPanel() {
 
       const handleChainChanged = (chainId) => {
         console.log("Chain cambiada a:", chainId);
-        // Puedes recargar la página o manejar el cambio de red aquí
-        window.location.reload();
+        // Intentar cambiar automáticamente a la red deseada
+        // No recargar la página inmediatamente
+        connectWallet();
       };
 
       window.ethereum.on('accountsChanged', handleAccountsChanged);
@@ -286,81 +336,6 @@ export default function AdminPanel() {
     }
   }, [connectWallet]);
 
-  // Función para enviar transacciones utilizando el SDK de Biconomy con Paymaster
-  const sendTransactionWithSDK = async () => {
-    if (!smartAccount || !dataJson) {
-      alert("La Smart Account o los datos JSON no están inicializados.");
-      return;
-    }
-
-    if (!isWhitelisted) {
-      alert("Tu cuenta no está en la lista blanca.");
-      return;
-    }
-
-    if (isTransactionPending) {
-      alert("Por favor, espera a que la transacción anterior se confirme.");
-      return;
-    }
-
-    try {
-      setIsTransactionPending(true);
-      setStatus('signing');
-      showLoading("Firmando la transacción...");
-
-      console.log("Enviando transacción utilizando el SDK de Biconomy...");
-
-      // Preparar los datos de la transacción
-      const tx = {
-        to: contractAddress,
-        data: encodeFunctionCall('saveDocument', [JSON.stringify(dataJson), userAccount]),
-      };
-
-      // Enviar la transacción usando el SDK con Paymaster
-      const userOpResponse = await smartAccount.sendTransaction(tx, {
-        paymasterServiceData: { mode: PaymasterMode.SPONSORED },
-      });
-
-      // Obtener el hash de la transacción
-      const { transactionHash } = await userOpResponse.waitForTxHash();
-      console.log("Transaction Hash", transactionHash);
-
-      // Esperar a que la transacción se confirme
-      const userOpReceipt = await userOpResponse.wait();
-      if (userOpReceipt.success === "true" || userOpReceipt.success === true) {
-        console.log("UserOp receipt", userOpReceipt);
-        console.log("Transaction receipt", userOpReceipt.receipt);
-        setTransactionHash(transactionHash);
-        setStatus('signed');
-        alert("Transacción enviada exitosamente.");
-      } else {
-        throw new Error("La transacción falló.");
-      }
-
-    } catch (error) {
-      console.error("Error al enviar la transacción con el SDK:", error);
-      let errorMessage = "Ocurrió un error al enviar la transacción.";
-      if (error.response && error.response.data && error.response.data.error) {
-        errorMessage = error.response.data.error.message;
-      } else if (error.reason) {
-        errorMessage = error.reason;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      alert("Error: " + errorMessage);
-      setStatus('error');
-    } finally {
-      setIsTransactionPending(false);
-      hideLoading();
-    }
-  };
-
-  // Función para codificar la llamada a la función del contrato
-  const encodeFunctionCall = (functionName, params) => {
-    const iface = new ethers.utils.Interface(contractABI);
-    return iface.encodeFunctionData(functionName, params);
-  };
-
   // Función para enviar transacciones utilizando Biconomy con Paymaster
   const sendTransactionWithBiconomy = async (to, data) => {
     if (!smartAccount) {
@@ -370,7 +345,7 @@ export default function AdminPanel() {
     const tx = {
       to,
       data,
-      // Puedes agregar más campos como `value` si es necesario
+      // Puedes agregar más campos como value si es necesario
     };
 
     const userOpResponse = await smartAccount.sendTransaction(tx, {
@@ -419,15 +394,19 @@ export default function AdminPanel() {
 
     try {
       setIsTransactionPending(true);
+      setStatus('signing');
       showLoading("Agregando usuario a la whitelist...");
 
-      // Codificar la llamada a la función del contrato incluyendo el rol seleccionado
-      const iface = new ethers.utils.Interface(contractABI);
-      const data = iface.encodeFunctionData('addToWhitelist', [newEOA, newSmartAccount, newName, newRole]);
-      console.log("Datos codificados de la transacción:", data);
+      console.log("Enviando transacción utilizando el SDK de Biconomy...");
+
+      // Preparar los datos de la transacción
+      const tx = {
+        to: contractAddress,
+        data: encodeFunctionCall('addToWhitelist', [newEOA, newSmartAccount, newName, newRole]),
+      };
 
       // Enviar la transacción usando Biconomy con Paymaster
-      const receipt = await sendTransactionWithBiconomy(contractAddress, data);
+      const receipt = await sendTransactionWithBiconomy(contractAddress, tx.data);
       console.log("Transaction receipt", receipt);
 
       alert("Usuario agregado exitosamente a la whitelist.");
@@ -438,16 +417,12 @@ export default function AdminPanel() {
       setNewName("");
       setNewRole(0); // Resetear el rol a Usuario
 
-      // Crear una instancia del contrato con el signer actualizado
+      // Actualizar la whitelist
       const contract = new ethers.Contract(contractAddress, contractABI, signer);
-
-      // Esperar un breve momento antes de actualizar la whitelist
-      setTimeout(async () => {
-        await fetchAdminAndWhitelist(contract, userAccount);
-        setIsTransactionPending(false);
-      }, 5000); // 5 segundos de retraso para asegurar la confirmación
+      await fetchAdminAndWhitelist(contract, userAccount);
 
       hideLoading();
+      setStatus('signed');
     } catch (error) {
       console.error("Error al agregar usuario a la whitelist:", error);
       hideLoading();
@@ -461,6 +436,7 @@ export default function AdminPanel() {
         errorMessage = error.message;
       }
       alert("Error: " + errorMessage);
+      setStatus('error');
     }
   };
 
@@ -496,7 +472,7 @@ export default function AdminPanel() {
 
         // Enviar la transacción para revocar admin usando Biconomy con Paymaster
         await sendTransactionWithBiconomy(contractAddress, dataRemoveAdmin);
-        console.log("Rol de administrador revocado para:", smartAccountAddress);
+        console.log(`Rol de administrador revocado para: ${smartAccountAddress}`);
       }
 
       // Ahora, eliminar de la whitelist
@@ -507,17 +483,15 @@ export default function AdminPanel() {
 
       // Enviar la transacción para eliminar de la whitelist usando Biconomy con Paymaster
       await sendTransactionWithBiconomy(contractAddress, dataRemoveWhitelist);
-      console.log("Usuario eliminado de la whitelist:", smartAccountAddress);
+      console.log(`Usuario eliminado de la whitelist: ${smartAccountAddress}`);
 
       alert("Usuario eliminado exitosamente de la whitelist.");
 
-      // Esperar un breve momento antes de actualizar la whitelist
-      setTimeout(async () => {
-        await fetchAdminAndWhitelist(contract, userAccount);
-        setIsTransactionPending(false);
-      }, 5000); // 5 segundos de retraso para asegurar la confirmación
+      // Actualizar la whitelist
+      await fetchAdminAndWhitelist(contract, userAccount);
 
       hideLoading();
+      setIsTransactionPending(false);
     } catch (error) {
       console.error("Error al eliminar usuario de la whitelist:", error);
       hideLoading();
@@ -550,22 +524,19 @@ export default function AdminPanel() {
 
     try {
       setIsTransactionPending(true);
+      showLoading(`${isCurrentlyAdmin ? "Revocando" : "Concediendo"} rol de administrador...`);
 
       // Crear una instancia del contrato
       const contract = new ethers.Contract(contractAddress, contractABI, signer);
 
       let data;
       if (isCurrentlyAdmin) {
-        console.log(smartAccountAddress, isCurrentlyAdmin);
         // Revocar rol de administrador
-        showLoading("Revocando rol de administrador...");
         const iface = new ethers.utils.Interface(contractABI);
         data = iface.encodeFunctionData('changeRole', [smartAccountAddress, 0]); // Role.USER = 0
         console.log("Datos codificados para changeRole (remover admin):", data);
       } else {
-        console.log(smartAccountAddress, isCurrentlyAdmin);
         // Conceder rol de administrador
-        showLoading("Concediendo rol de administrador...");
         const iface = new ethers.utils.Interface(contractABI);
         data = iface.encodeFunctionData('changeRole', [smartAccountAddress, 1]); // Role.ADMIN = 1
         console.log("Datos codificados para changeRole (conceder admin):", data);
@@ -573,15 +544,13 @@ export default function AdminPanel() {
 
       // Enviar la transacción usando Biconomy con Paymaster
       await sendTransactionWithBiconomy(contractAddress, data);
-      console.log(`Rol de administrador ${isCurrentlyAdmin ? "revocado" : "concedido"} para:`, smartAccountAddress);
+      console.log(`Rol de administrador ${isCurrentlyAdmin ? "revocado" : "concedido"} para: ${smartAccountAddress}`);
 
-      // Esperar un breve momento antes de actualizar la whitelist
-      setTimeout(async () => {
-        await fetchAdminAndWhitelist(contract, userAccount);
-        setIsTransactionPending(false);
-      }, 5000); // 5 segundos de retraso para asegurar la confirmación
+      // Actualizar la whitelist
+      await fetchAdminAndWhitelist(contract, userAccount);
 
       hideLoading();
+      setIsTransactionPending(false);
     } catch (error) {
       console.error(`Error al ${isCurrentlyAdmin ? "revocar" : "conceder"} rol de administrador:`, error);
       hideLoading();
@@ -629,173 +598,189 @@ export default function AdminPanel() {
             </div>
           </div>
 
-          {/* Añadir nuevo usuario */}
-          <div className="flexH gap30 margin46">
-            <div className="flex1">
-              <label className="titleLabel">
-                Añadir nuevo usuario
-              </label>
-              <div className="containerInput">
-                <label className="titleLabel labelW">EOA</label>
-                <label className="titleLabel labelW">Smart Account</label>
-                <label className="titleLabel labelW">Nombre</label>
-                <label className="titleLabel labelW">Rol</label> {/* Nueva etiqueta para Rol */}
-                <br></br>
-                <input
-                  className="inputText"
-                  type="text"
-                  placeholder="Dirección EOA de Ethereum"
-                  value={newEOA}
-                  onChange={(e) => setNewEOA(e.target.value)}
-                />
-                <input
-                  className="inputText"
-                  type="text"
-                  placeholder="Dirección de Smart Account"
-                  value={newSmartAccount}
-                  onChange={(e) => setNewSmartAccount(e.target.value)}
-                  style={{ marginLeft: "10px" }}
-                />
-                <input
-                  className="inputText"
-                  type="text"
-                  placeholder="Nombre del Usuario"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  style={{ marginLeft: "10px" }}
-                />
-                {/* Campo de selección para Rol */}
-                <select
-                  className="inputText"
-                  value={newRole}
-                  onChange={(e) => setNewRole(parseInt(e.target.value))}
-                  style={{ marginLeft: "10px", padding: "8px" }}
-                >
-                  <option value={0}>Usuario</option>
-                  <option value={1}>Administrador</option>
-                </select>
-                <button
-                  className="iconAction"
-                  onClick={addUserToWhitelist}
-                  style={{ marginLeft: "10px" }}
-                  disabled={isTransactionPending}
-                >
-                  <img src="../images/icon_more.svg" alt="Agregar" />
-                </button>
-              </div>
+          {/* Verificar si el usuario está en la whitelist */}
+          {!isWhitelisted && userEOA && !loading && (
+            <div className="permission-denied" style={{ textAlign: 'center', marginTop: '50px' }}>
+              <p style={{ color: 'red', fontSize: '18px' }}>
+                No tienes permisos para acceder al panel de administración.
+              </p>
             </div>
-          </div>
+          )}
 
-          {/* Tabla de Usuarios */}
-          <div className="flexH gap30 margin46 containerTable">
-            <div className="flex1">
-              <div className="centerText margin33">
-                <div className="titleLabel">Usuarios</div>
+          {/* Mostrar el panel de administración solo si el usuario está en la whitelist */}
+          {isWhitelisted && (
+            <>
+              {/* Añadir nuevo usuario */}
+              <div className="flexH gap30 margin46">
+                <div className="flex1">
+                  <label className="titleLabel">
+                    Añadir nuevo usuario
+                  </label>
+                  <div className="containerInput">
+                    <label className="titleLabel labelW">EOA</label>
+                    <label className="titleLabel labelW">Smart Account</label>
+                    <label className="titleLabel labelW">Nombre</label>
+                    <label className="titleLabel labelW">Rol</label> {/* Nueva etiqueta para Rol */}
+                    <br></br>
+                    <input
+                      className="inputText"
+                      type="text"
+                      placeholder="Dirección EOA de Ethereum"
+                      value={newEOA}
+                      onChange={(e) => setNewEOA(e.target.value)}
+                    />
+                    <input
+                      className="inputText"
+                      type="text"
+                      placeholder="Dirección de Smart Account"
+                      value={newSmartAccount}
+                      onChange={(e) => setNewSmartAccount(e.target.value)}
+                      style={{ marginLeft: "10px" }}
+                    />
+                    <input
+                      className="inputText"
+                      type="text"
+                      placeholder="Nombre del Usuario"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      style={{ marginLeft: "10px" }}
+                    />
+                    {/* Campo de selección para Rol */}
+                    <select
+                      className="inputText"
+                      value={newRole}
+                      onChange={(e) => setNewRole(parseInt(e.target.value))}
+                      style={{ marginLeft: "10px", padding: "8px" }}
+                    >
+                      <option value={0}>Usuario</option>
+                      <option value={1}>Administrador</option>
+                    </select>
+                    <button
+                      className="iconAction"
+                      onClick={addUserToWhitelist}
+                      style={{ marginLeft: "10px" }}
+                      disabled={isTransactionPending}
+                    >
+                      <img src="../images/icon_more.svg" alt="Agregar" />
+                    </button>
+                  </div>
+                </div>
               </div>
-              <table id="userTable" cellSpacing="0">
-                <thead>
-                  <tr>
-                    <th align="center">EOA</th>
-                    <th align="center">Smart Account</th>
-                    <th align="center">Nombre</th>
-                    <th align="center">Rol</th>
-                    <th align="center">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {whitelistedUsers.length > 0 ? (
-                    whitelistedUsers.map((user) => (
-                      <tr key={user.smartAccount}>
-                        <td align="center">{user.eoa}</td>
-                        <td align="center">{user.smartAccount}</td>
-                        <td align="center">{user.name}</td>
-                        <td align="center">{user.isAdmin ? "Administrador" : "Usuario"}</td>
-                        <td align="center">
-                          {/* Mostrar botones solo si el usuario conectado es un administrador y no está gestionando su propia cuenta */}
-                          {isAdmin && user.smartAccount !== userAccount && (
-                            <>
-                              {/* Botón de Toggle Admin */}
-                              <button
-                                className="iconAction"
-                                style={{ marginLeft: "10px" }}
-                                onClick={() => toggleAdmin(user.smartAccount, user.isAdmin)}
-                                disabled={isTransactionPending}
-                              >
-                                {user.isAdmin ? (
-                                  <img src="../images/icon_remove_admin.svg" alt="Revocar rol de administrador" />
-                                ) : (
-                                  <img src="../images/icon_remove_admin.svg" alt="Conceder rol de administrador" /> // Corregido el icono para añadir admin
-                                )}
-                              </button>
 
-                              {/* Botón para Eliminar Usuario */}
-                              <button
-                                className="iconAction"
-                                onClick={() => removeUserFromWhitelist(user.smartAccount)}
-                                style={{ marginLeft: "10px" }}
-                                disabled={isTransactionPending}
-                              >
-                                <img src="../images/icon_delete.svg" alt="Eliminar" />
-                              </button>
-                            </>
-                          )}
-                        </td>
+              {/* Tabla de Usuarios */}
+              <div className="flexH gap30 margin46 containerTable">
+                <div className="flex1">
+                  <div className="centerText margin33">
+                    <div className="titleLabel">Usuarios</div>
+                  </div>
+                  <table id="userTable" cellSpacing="0">
+                    <thead>
+                      <tr>
+                        <th align="center">EOA</th>
+                        <th align="center">Smart Account</th>
+                        <th align="center">Nombre</th>
+                        <th align="center">Rol</th>
+                        <th align="center">Acciones</th>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="5" align="center">
-                        No hay usuarios en la whitelist.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                    </thead>
+                    <tbody>
+                      {whitelistedUsers.length > 0 ? (
+                        whitelistedUsers.map((user) => (
+                          <tr key={user.smartAccount}>
+                            <td align="center">{user.eoa}</td>
+                            <td align="center">{user.smartAccount}</td>
+                            <td align="center">{user.name}</td>
+                            <td align="center">{user.isAdmin ? "Administrador" : "Usuario"}</td>
+                            <td align="center">
+                              {/* Mostrar botones solo si el usuario conectado es un administrador y no está gestionando su propia cuenta */}
+                              {isAdmin && user.smartAccount !== userAccount && (
+                                <>
+                                  {/* Botón de Toggle Admin */}
+                                  <button
+                                    className="iconAction"
+                                    style={{ marginLeft: "10px" }}
+                                    onClick={() => toggleAdmin(user.smartAccount, user.isAdmin)}
+                                    disabled={isTransactionPending}
+                                  >
+                                    {user.isAdmin ? (
+                                      <img src="../images/icon_remove_admin.svg" alt="Revocar rol de administrador" />
+                                    ) : (
+                                      <img src="../images/icon_up_admin.svg" alt="Conceder rol de administrador" /> // Corregido el icono para añadir admin
+                                    )}
+                                  </button>
 
-          {/* Botón de Refresco Manual */}
-          <div className="centerText margin20">
-            <button
-              className="refresh-button"
-              onClick={async () => {
-                try {
-                  const contract = new ethers.Contract(contractAddress, contractABI, signer);
-                  await fetchAdminAndWhitelist(contract, userAccount);
-                } catch (error) {
-                  console.error("Error al refrescar la lista:", error);
-                }
-              }}
-              disabled={isTransactionPending}
-            >
-              Refrescar Lista
-            </button>
-          </div>
+                                  {/* Botón para Eliminar Usuario */}
+                                  <button
+                                    className="iconAction"
+                                    onClick={() => removeUserFromWhitelist(user.smartAccount)}
+                                    style={{ marginLeft: "10px" }}
+                                    disabled={isTransactionPending}
+                                  >
+                                    <img src="../images/icon_delete.svg" alt="Eliminar" />
+                                  </button>
+                                </>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="5" align="center">
+                            No hay usuarios en la whitelist.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-          {/* Sección para Manejar Transacciones Adicionales */}
-          {userEOA && dataJson && isWhitelisted && status === 'notSigned' && (
-            <div className="transactionSection">
+              {/* Botón de Refresco Manual */}
               <div className="centerText margin20">
                 <button
-                  id="actionButton"
-                  onClick={sendTransactionWithSDK} // Usar el método del SDK con Paymaster
+                  className="refresh-button"
+                  onClick={async () => {
+                    try {
+                      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+                      await fetchAdminAndWhitelist(contract, userAccount);
+                    } catch (error) {
+                      console.error("Error al refrescar la lista:", error);
+                    }
+                  }}
                   disabled={isTransactionPending}
                 >
-                  Firmar Documento
+                  Refrescar lista
                 </button>
               </div>
-            </div>
+
+              {/* Sección para Manejar Transacciones Adicionales */}
+              {userEOA && dataJson && isWhitelisted && status === 'notSigned' && (
+                <div className="transactionSection">
+                  <div className="centerText margin20">
+                    <button
+                      id="actionButton"
+                      onClick={sendTransactionWithSDK} // Usar el método del SDK con Paymaster
+                      disabled={isTransactionPending}
+                    >
+                      Firmar Documento
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Mostrar Hash de Transacción */}
+              <div className="centerText margin20">
+                {transactionHash && <p>Transacción exitosa: {transactionHash}</p>}
+              </div>
+
+              {/* Mensajes de Estado */}
+              {status === 'error' && (
+                <p style={{ color: 'red' }}>Ocurrió un error. Inténtalo de nuevo.</p>
+              )}
+            </>
           )}
 
-          {/* Mostrar Hash de Transacción */}
-          <div className="centerText margin20">
-            {transactionHash && <p>Transacción exitosa: {transactionHash}</p>}
-          </div>
-
-          {/* Mensajes de Estado */}
-          {status === 'error' && (
-            <p style={{ color: 'red' }}>Ocurrió un error. Inténtalo de nuevo.</p>
-          )}
+         
         </div>
       </div>
 
