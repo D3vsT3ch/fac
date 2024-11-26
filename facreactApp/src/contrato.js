@@ -37,6 +37,12 @@ export const contractABI = [
         "internalType": "uint256",
         "name": "timestamp",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "key",
+        "type": "string"
       }
     ],
     "name": "DocumentSaved",
@@ -90,13 +96,13 @@ export const contractABI = [
         "type": "address"
       },
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "eoa",
-        "type": "address"
+        "indexed": false,
+        "internalType": "bool",
+        "name": "newStatus",
+        "type": "bool"
       }
     ],
-    "name": "UserRemovedFromWhitelist",
+    "name": "UserStatusChanged",
     "type": "event"
   },
   {
@@ -181,6 +187,24 @@ export const contractABI = [
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_smartAccount",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "_newStatus",
+        "type": "bool"
+      }
+    ],
+    "name": "changeUserStatus",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "getAllDocuments",
     "outputs": [
@@ -208,6 +232,11 @@ export const contractABI = [
         "internalType": "address[]",
         "name": "",
         "type": "address[]"
+      },
+      {
+        "internalType": "string[]",
+        "name": "",
+        "type": "string[]"
       }
     ],
     "stateMutability": "view",
@@ -242,6 +271,11 @@ export const contractABI = [
         "internalType": "address",
         "name": "",
         "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -340,19 +374,6 @@ export const contractABI = [
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "_smartAccount",
-        "type": "address"
-      }
-    ],
-    "name": "removeFromWhitelist",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "string",
         "name": "_data",
         "type": "string"
@@ -361,6 +382,11 @@ export const contractABI = [
         "internalType": "address",
         "name": "_eoa",
         "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "_key",
+        "type": "string"
       }
     ],
     "name": "saveDocument",

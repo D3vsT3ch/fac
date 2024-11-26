@@ -209,6 +209,7 @@ export default function DocumentosPanel() {
         }
     }, [showLoading, hideLoading]);
 
+    //async (contract, userAccountAddress, retries = 3, delayTime = 2000) => {
     // Función para manejar la visualización de un documento
     const handleViewDocument = useCallback(async (docHash) => {
         if (!contract) {

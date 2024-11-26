@@ -2,7 +2,7 @@ const { ethers } = require('hardhat');
 
 async function main() {
   // Dirección del contrato desplegado
-  const facAddress = '0xB328c52173E70adcd0b6E09aD90AfEb141D11714'; // Reemplaza con la dirección real
+  const facAddress = '0x5F12172a05DdF67bf6A16069Ee7C533B769A129d'; // Reemplaza con la dirección real
 
   // Obtener la instancia del contrato
   const Fac = await ethers.getContractFactory('Fac');

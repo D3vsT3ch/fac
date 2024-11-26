@@ -6,10 +6,10 @@ import "./Fac.sol";
 
 contract FacV2 is Fac, ERC2771Recipient {
     /**
-     * @dev Establece el Trusted Forwarder. Solo puede ser llamado por el propietario o un administrador.
+     * @dev Establece el Trusted Forwarder. Solo puede ser llamado por el propietario o un administrador activo.
      * @param _trustedForwarder La dirección del trusted forwarder (Biconomy).
      */
-    function setTrustedForwarder(address _trustedForwarder) public onlyOwnerOrAdmin {
+    function setTrustedForwarder(address _trustedForwarder) public onlyOwnerOrActiveAdmin {
         _setTrustedForwarder(_trustedForwarder);
     }
 

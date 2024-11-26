@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Link with POST</title>
+    <script>
+        function openLinkWithPost() {
+            const url = 'https://example.com/submit'; // Replace with your target URL
+            const postData = {
+                data: 'YourDataHere', // Replace with your data
+                id: 'YourIDHere'     // Replace with your ID
+            };
+
+            // Create a form element
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = url;
+            form.target = '_blank'; // Open in a new tab
+
+            // Add POST variables as hidden input fields
+            for (const key in postData) {
+                if (postData.hasOwnProperty(key)) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = key;
+                    input.value = postData[key];
+                    form.appendChild(input);
+                }
+            }
+
+            // Append the form to the body
+            document.body.appendChild(form);
+
+            // Submit the form
+            form.submit();
+
+            // Remove the form from the DOM
+            document.body.removeChild(form);
+        }
+    </script>
+</head>
+<body>
+    <h1>Open Link with POST Data</h1>
+    <button onclick="openLinkWithPost()">Send POST Request</button>
+</body>
+</html>
