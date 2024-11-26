@@ -1,47 +1,38 @@
+<!-- index.html -->
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Open Link with POST</title>
+    <title>Enviar Datos con postMessage</title>
     <script>
-        function openLinkWithPost() {
-            const url = 'https://example.com/submit'; // Replace with your target URL
-            const postData = {
-                data: 'YourDataHere', // Replace with your data
-                id: 'YourIDHere'     // Replace with your ID
-            };
-
-            // Create a form element
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = url;
-            form.target = '_blank'; // Open in a new tab
-
-            // Add POST variables as hidden input fields
-            for (const key in postData) {
-                if (postData.hasOwnProperty(key)) {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = key;
-                    input.value = postData[key];
-                    form.appendChild(input);
-                }
+        function openLinkWithPostMessage() {
+          const url = 'http://localhost:5173/'; // URL de tu aplicación React
+          const postData = {
+            data: '{"key1":"valor1","key2":"valor2","key3":"valor3","key10":"valor10","key20":"valor20","key30":"valor30","key11":"valor11","key21":"valor21","key31":"valor31"}',
+            id: 'sdfsdasafsgscwdfe'
+          };
+      
+          // Abrir una nueva ventana con la aplicación React
+          const newWindow = window.open(url, '_blank');
+      
+          // Usar un intervalo para verificar cuándo la nueva ventana está lista
+          const interval = setInterval(function() {
+            if (newWindow && newWindow.closed) {
+              clearInterval(interval);
+              console.warn('La ventana ha sido cerrada antes de enviar el mensaje.');
+            } else if (newWindow && newWindow.postMessage) {
+              console.log('Enviando datos a la nueva ventana:', postData);
+              newWindow.postMessage(postData, 'http://localhost:5173');
+              clearInterval(interval);
             }
-
-            // Append the form to the body
-            document.body.appendChild(form);
-
-            // Submit the form
-            form.submit();
-
-            // Remove the form from the DOM
-            document.body.removeChild(form);
+          }, 500); // Verificar cada 500ms
         }
-    </script>
+      </script>
+      
 </head>
 <body>
-    <h1>Open Link with POST Data</h1>
-    <button onclick="openLinkWithPost()">Send POST Request</button>
+    <h1>Enviar Datos con postMessage</h1>
+    <button onclick="openLinkWithPostMessage()">Abrir Aplicación con Datos</button>
 </body>
 </html>

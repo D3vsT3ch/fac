@@ -26,6 +26,7 @@ export default function MainPage() {
   const [isWhitelisted, setIsWhitelisted] = useState(false);
   const [isTransactionPending, setIsTransactionPending] = useState(false); // Estado para gestionar transacciones pendientes
   const [owner, setOwner] = useState(null); // Estado para almacenar el owner
+  const [id, setId] = useState(null); // Nuevo estado para el ID
 
   // Definir los parámetros de la red
   const targetNetwork = {
@@ -40,24 +41,42 @@ export default function MainPage() {
     blockExplorerUrls: networkConfig.blockExplorerUrls,
   };
 
-  // Parsear parámetros de la URL al montar el componente
+  // Configurar el listener para recibir mensajes vía postMessage
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const dataParam = params.get('data');
-    if (dataParam) {
-      console.log('Raw dataParam:', dataParam);
-      try {
-        const decodedData = JSON.parse(decodeURIComponent(dataParam));
-        console.log('Decoded dataParam:', decodedData);
-        setDataJson(decodedData);
-      } catch (error) {
-        console.error('Error al parsear el parámetro "data":', error);
-        alert('El parámetro "data" en la URL no es válido.');
+    function handleMessage(event) {
+      console.log('Mensaje recibido:', event);
+      console.log('Origen del mensaje:', event.origin);
+      console.log('Datos del mensaje:', event.data);
+  
+      // Verificar el origen del mensaje por seguridad
+      if (event.origin !== 'http://localhost') {
+        console.warn('Origen no autorizado:', event.origin);
+        return;
       }
-    } else {
-      console.log('No se proporcionó el parámetro "data" en la URL.');
+  
+      const { data, id } = event.data;
+  
+      if (data && id) {
+        try {
+          setDataJson(JSON.parse(data));
+          setId(id);
+          console.log('Datos recibidos vía postMessage:', event.data);
+        } catch (error) {
+          console.error('Error al parsear los datos recibidos:', error);
+          alert('Los datos recibidos no son válidos.');
+        }
+      } else {
+        console.warn('Datos o ID no encontrados en el mensaje recibido.');
+      }
     }
+  
+    window.addEventListener('message', handleMessage);
+  
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
   }, []);
+  
 
   // Función para mostrar el loader
   const showLoading = (message) => {
@@ -338,7 +357,7 @@ export default function MainPage() {
 
         <Routes>
           <Route
-            path="*" // Utilizar "*" para capturar todas las rutas
+            path="*"
             element={
               <div id="containerEnter">
                 <div id="online">
@@ -348,13 +367,15 @@ export default function MainPage() {
                 <div id="jsonContent">
                   {transactionHash && <p>Transacción exitosa: {transactionHash}</p>}
                   {documentHash && <p>Hash del Documento: {documentHash}</p>}
-                  {!dataJson && <p>No se proporcionó JSON en la URL.</p>}
-                  {dataJson && (
+                  {dataJson ? (
                     <div>
                       {Object.entries(dataJson).map(([key, value]) => (
                         <p key={key}><strong>{key}:</strong> {value}</p>
                       ))}
+                      {id && <p><strong>ID:</strong> {id}</p>}
                     </div>
+                  ) : (
+                    <p>Esperando datos...</p>
                   )}
                 </div>
                 {/* Botones de acción */}
@@ -366,7 +387,7 @@ export default function MainPage() {
                   <>
                     <button
                       id="actionButton"
-                      onClick={sendTransactionWithSDK} // Usar el método del SDK
+                      onClick={sendTransactionWithSDK}
                       disabled={isTransactionPending}
                     >
                       Firmar
@@ -393,7 +414,6 @@ export default function MainPage() {
           />
         </Routes>
 
-        {/* Botón de Conectar */}
         {!userEOA && (
           <div className="center-text" style={{ marginTop: "20px" }}>
             <WalletConnect onConnect={connectWallet} />
