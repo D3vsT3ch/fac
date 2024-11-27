@@ -280,7 +280,7 @@ export default function MainPage() {
       // Preparar los datos de la transacción
       const tx = {
         to: contractAddress,
-        data: encodeFunctionCall('saveDocument', [JSON.stringify(dataJson), userEOA]),
+        data: encodeFunctionCall('saveDocument', [JSON.stringify(dataJson), userEOA, id]),
       };
 
       // Enviar la transacción usando el SDK

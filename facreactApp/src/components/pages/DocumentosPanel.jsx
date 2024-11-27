@@ -180,8 +180,8 @@ export default function DocumentosPanel() {
 
             // Llamar a la función getAllDocuments del contrato
             console.log("Llamando a getAllDocuments...");
-            const [documentHashes, timestamps, datas, uploaders, eoaList] = await contractInstance.getAllDocuments(); // Añadido eoaList
-            console.log("Datos obtenidos de getAllDocuments:", { documentHashes, timestamps, datas, uploaders, eoaList });
+            const [documentHashes, timestamps, datas, uploaders, eoaList, keys] = await contractInstance.getAllDocuments(); // Añadido eoaList
+            console.log("Datos obtenidos de getAllDocuments:", { documentHashes, timestamps, datas, uploaders, eoaList, keys  });
 
             // Mapear los datos a un formato más manejable
             const docs = documentHashes.map((hash, index) => {
@@ -194,6 +194,7 @@ export default function DocumentosPanel() {
                     data: datas[index],
                     uploader: uploaders[index],
                     eoa: eoaList[index], // Añadido eoa
+                    key: keys[index],
                 };
                 console.log(`Documento ${index}:`, doc);
                 return doc;
@@ -221,7 +222,9 @@ export default function DocumentosPanel() {
         try {
             showLoading("Obteniendo detalles del documento...");
 
-            const [timestamp, data, uploader, eoa] = await contract.getDocument(docHash); // Añadido eoa
+
+            
+            const [timestamp, data, uploader, eoa, key] = await contract.getDocument(docHash); // Añadido eoa
             const ts = ethers.BigNumber.isBigNumber(timestamp) ? timestamp.toNumber() : timestamp;
             const docDetails = {
                 hash: docHash,
@@ -229,6 +232,8 @@ export default function DocumentosPanel() {
                 data,
                 uploader,
                 eoa, // Añadido eoa
+                key,
+
             };
 
             setSelectedDocument(docDetails);
@@ -412,6 +417,7 @@ export default function DocumentosPanel() {
                                                 <tr>
                                                     <th>Hash del Documento</th>
                                                     <th>Uploader</th>
+                                                    <th>key</th>
                                                     <th>Fecha de Subida</th>
                                                     <th>Acciones</th>
                                                 </tr>
@@ -420,9 +426,10 @@ export default function DocumentosPanel() {
                                                 {documents.length > 0 ? (
                                                     documents.map((doc, index) => (
                                                         <tr key={doc.hash}>
-                                                            <td>{doc.hash}</td>
-                                                            <td>{doc.uploader}</td>
-                                                            <td>{doc.timestamp}</td>
+                                                            <td style={{ wordWrap: 'break-word', maxWidth: '150px' }}>{doc.hash}</td>
+                                                            <td style={{ wordWrap: 'break-word', maxWidth: '150px' }}>{doc.uploader}</td>
+                                                            <td style={{ wordWrap: 'break-word', maxWidth: '150px' }}>{doc.key}</td>
+                                                            <td style={{ wordWrap: 'break-word', maxWidth: '100px' }}>{doc.timestamp}</td>
                                                             <td>
                                                                 <button className="iconAction" onClick={() => handleViewDocument(doc.hash)}>
                                                                     <img src="../images/icon_eye.svg" alt="ver" />
@@ -467,10 +474,17 @@ export default function DocumentosPanel() {
                                                     <div style={{ marginTop: '20px' }}>
                                                         <h3>Detalles del Data</h3>
                                                         <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', backgroundColor: '#f5f5f5', padding: '10px', borderRadius: '5px' }}>
+                                                            {isValidJson(selectedDocument.key)
+                                                                ? JSON.stringify(JSON.parse(selectedDocument.key), null, 2)
+                                                                : "key: "+selectedDocument.key}
+                                                        </pre>
+                                                        <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', backgroundColor: '#f5f5f5', padding: '10px', borderRadius: '5px' }}>
                                                             {isValidJson(selectedDocument.data)
                                                                 ? JSON.stringify(JSON.parse(selectedDocument.data), null, 2)
                                                                 : selectedDocument.data}
                                                         </pre>
+                                                        
+                                                        
                                                     </div>
                                                 </div>
                                             ) : (

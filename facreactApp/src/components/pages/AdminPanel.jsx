@@ -10,7 +10,7 @@ import { contractABI, contractAddress } from "../../contrato";
 import "../../styles/App.css";
 import { requiredChainId, networkConfig } from "../../config";
 import { initializeBiconomy } from "../../biconomy";
-import { PaymasterMode } from "@biconomy/account"; // Importar PaymasterMode si se usa
+import { PaymasterMode } from "@biconomy/account";
 import axios from "axios";
 
 export default function AdminPanel() {
@@ -195,38 +195,49 @@ export default function AdminPanel() {
   const fetchAdminAndWhitelist = async (contract, userAccountAddress, retries = 3, delayTime = 2000) => {
     try {
       showLoading("Cargando administradores y lista blanca...");
-      console.log("Obteniendo eventos UserWhitelisted, UserRemovedFromWhitelist y RoleChanged...");
+      console.log("Obteniendo eventos UserWhitelisted, UserStatusChanged y RoleChanged...");
 
       // Definir los filtros de eventos
       const filterUserWhitelisted = contract.filters.UserWhitelisted();
-      const filterUserRemoved = contract.filters.UserRemovedFromWhitelist();
+      const filterUserStatusChanged = contract.filters.UserStatusChanged();
       const filterRoleChanged = contract.filters.RoleChanged();
 
       // Ejecutar las consultas en paralelo
       const [
         eventsUserWhitelisted,
-        eventsUserRemoved,
+        eventsUserStatusChanged,
         eventsRoleChanged
       ] = await Promise.all([
         contract.queryFilter(filterUserWhitelisted, 0, "latest"),
-        contract.queryFilter(filterUserRemoved, 0, "latest"),
+        contract.queryFilter(filterUserStatusChanged, 0, "latest"),
         contract.queryFilter(filterRoleChanged, 0, "latest"),
       ]);
 
       console.log("Eventos UserWhitelisted:", eventsUserWhitelisted);
-      console.log("Eventos UserRemovedFromWhitelist:", eventsUserRemoved);
+      console.log("Eventos UserStatusChanged:", eventsUserStatusChanged);
       console.log("Eventos RoleChanged:", eventsRoleChanged);
 
       // Procesar eventos de la whitelist
       const whitelistMap = new Map();
+
+      // Agregar usuarios de eventos UserWhitelisted
       eventsUserWhitelisted.forEach(event => {
         const { smartAccount, eoa, name, role } = event.args;
-        whitelistMap.set(smartAccount.toLowerCase(), { eoa: eoa.toLowerCase(), name, role });
+        whitelistMap.set(smartAccount.toLowerCase(), {
+          eoa: eoa.toLowerCase(),
+          name,
+          role,
+          isActive: true // Por defecto, al agregarlos, están activos
+        });
       });
 
-      eventsUserRemoved.forEach(event => {
-        const { smartAccount } = event.args;
-        whitelistMap.delete(smartAccount.toLowerCase());
+      // Procesar eventos de cambio de estado de usuario
+      eventsUserStatusChanged.forEach(event => {
+        const { smartAccount, newStatus } = event.args;
+        const lowerSmartAccount = smartAccount.toLowerCase();
+        if (whitelistMap.has(lowerSmartAccount)) {
+          whitelistMap.get(lowerSmartAccount).isActive = newStatus;
+        }
       });
 
       // Procesar eventos de cambio de rol
@@ -240,12 +251,13 @@ export default function AdminPanel() {
 
       console.log("Mapa de Whitelist después de procesar eventos:", whitelistMap);
 
-      // Construir el array de usuarios con su estado de administrador
+      // Construir el array de usuarios con su estado de administrador y activo
       const whitelistArray = Array.from(whitelistMap.entries()).map(([smartAccount, user]) => ({
         smartAccount,
         eoa: user.eoa,
         name: user.name,
         isAdmin: user.role === 1, // Role.ADMIN = 1
+        isActive: user.isActive
       }));
 
       console.log("Whitelist Actualizada:", whitelistArray);
@@ -400,13 +412,10 @@ export default function AdminPanel() {
       console.log("Enviando transacción utilizando el SDK de Biconomy...");
 
       // Preparar los datos de la transacción
-      const tx = {
-        to: contractAddress,
-        data: encodeFunctionCall('addToWhitelist', [newEOA, newSmartAccount, newName, newRole]),
-      };
+      const data = encodeFunctionCall('addToWhitelist', [newEOA, newSmartAccount, newName, newRole]);
 
       // Enviar la transacción usando Biconomy con Paymaster
-      const receipt = await sendTransactionWithBiconomy(contractAddress, tx.data);
+      const receipt = await sendTransactionWithBiconomy(contractAddress, data);
       console.log("Transaction receipt", receipt);
 
       alert("Usuario agregado exitosamente a la whitelist.");
@@ -440,74 +449,6 @@ export default function AdminPanel() {
     }
   };
 
-  // Función para eliminar un usuario de la whitelist y revocar admin si aplica
-  const removeUserFromWhitelist = async (smartAccountAddress) => {
-    if (!smartAccountAddress) return;
-
-    if (isTransactionPending) {
-      alert("Por favor, espera a que la transacción anterior se confirme.");
-      return;
-    }
-
-    try {
-      setIsTransactionPending(true);
-      showLoading("Eliminando usuario de la whitelist...");
-      const lowerSmartAccount = smartAccountAddress.toLowerCase();
-
-      // Verificar si el usuario es admin
-      const isUserAdmin = whitelistedUsers.find(user => user.smartAccount.toLowerCase() === lowerSmartAccount)?.isAdmin;
-      console.log(`¿El usuario ${smartAccountAddress} es admin? ${isUserAdmin}`);
-
-      // Crear una instancia del contrato
-      const contract = new ethers.Contract(contractAddress, contractABI, signer);
-
-      if (isUserAdmin) {
-        // Revocar rol de administrador primero
-        console.log("El usuario es administrador. Revocando rol de administrador...");
-
-        // Codificar la llamada a la función changeRole para remover admin (rol = 0)
-        const ifaceChangeRole = new ethers.utils.Interface(contractABI);
-        const dataRemoveAdmin = ifaceChangeRole.encodeFunctionData('changeRole', [smartAccountAddress, 0]); // Role.USER = 0
-        console.log("Datos codificados para changeRole (remover admin):", dataRemoveAdmin);
-
-        // Enviar la transacción para revocar admin usando Biconomy con Paymaster
-        await sendTransactionWithBiconomy(contractAddress, dataRemoveAdmin);
-        console.log(`Rol de administrador revocado para: ${smartAccountAddress}`);
-      }
-
-      // Ahora, eliminar de la whitelist
-      // Codificar la llamada a la función removeFromWhitelist
-      const ifaceRemoveWhitelist = new ethers.utils.Interface(contractABI);
-      const dataRemoveWhitelist = ifaceRemoveWhitelist.encodeFunctionData('removeFromWhitelist', [smartAccountAddress]);
-      console.log("Datos codificados para removeFromWhitelist:", dataRemoveWhitelist);
-
-      // Enviar la transacción para eliminar de la whitelist usando Biconomy con Paymaster
-      await sendTransactionWithBiconomy(contractAddress, dataRemoveWhitelist);
-      console.log(`Usuario eliminado de la whitelist: ${smartAccountAddress}`);
-
-      alert("Usuario eliminado exitosamente de la whitelist.");
-
-      // Actualizar la whitelist
-      await fetchAdminAndWhitelist(contract, userAccount);
-
-      hideLoading();
-      setIsTransactionPending(false);
-    } catch (error) {
-      console.error("Error al eliminar usuario de la whitelist:", error);
-      hideLoading();
-      setIsTransactionPending(false);
-      let errorMessage = "Ocurrió un error al eliminar el usuario.";
-      if (error.data && error.data.message) {
-        errorMessage = error.data.message;
-      } else if (error.reason) {
-        errorMessage = error.reason;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      alert("Error: " + errorMessage);
-    }
-  };
-
   // Función para conceder o revocar rol de administrador usando Biconomy
   const toggleAdmin = async (smartAccountAddress, isCurrentlyAdmin) => {
     if (!smartAccountAddress) return;
@@ -529,18 +470,9 @@ export default function AdminPanel() {
       // Crear una instancia del contrato
       const contract = new ethers.Contract(contractAddress, contractABI, signer);
 
-      let data;
-      if (isCurrentlyAdmin) {
-        // Revocar rol de administrador
-        const iface = new ethers.utils.Interface(contractABI);
-        data = iface.encodeFunctionData('changeRole', [smartAccountAddress, 0]); // Role.USER = 0
-        console.log("Datos codificados para changeRole (remover admin):", data);
-      } else {
-        // Conceder rol de administrador
-        const iface = new ethers.utils.Interface(contractABI);
-        data = iface.encodeFunctionData('changeRole', [smartAccountAddress, 1]); // Role.ADMIN = 1
-        console.log("Datos codificados para changeRole (conceder admin):", data);
-      }
+      // Preparar los datos de la transacción
+      const data = encodeFunctionCall('changeRole', [smartAccountAddress, isCurrentlyAdmin ? 0 : 1]); // Role.USER = 0, Role.ADMIN = 1
+      console.log("Datos codificados para changeRole:", data);
 
       // Enviar la transacción usando Biconomy con Paymaster
       await sendTransactionWithBiconomy(contractAddress, data);
@@ -556,6 +488,56 @@ export default function AdminPanel() {
       hideLoading();
       setIsTransactionPending(false);
       let errorMessage = `Ocurrió un error al ${isCurrentlyAdmin ? "revocar" : "conceder"} el rol de administrador.`;
+      if (error.data && error.data.message) {
+        errorMessage = error.data.message;
+      } else if (error.reason) {
+        errorMessage = error.reason;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      alert("Error: " + errorMessage);
+    }
+  };
+
+  // Función para habilitar o deshabilitar usuario usando Biconomy
+  const toggleUserStatus = async (smartAccountAddress, isCurrentlyActive) => {
+    if (!smartAccountAddress) return;
+
+    if (!isAdmin) {
+      alert("Solo los administradores pueden gestionar usuarios.");
+      return;
+    }
+
+    if (isTransactionPending) {
+      alert("Por favor, espera a que la transacción anterior se confirme.");
+      return;
+    }
+
+    try {
+      setIsTransactionPending(true);
+      showLoading(`${isCurrentlyActive ? "Deshabilitando" : "Habilitando"} usuario...`);
+
+      // Crear una instancia del contrato
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+      // Preparar los datos de la transacción
+      const data = encodeFunctionCall('changeUserStatus', [smartAccountAddress, !isCurrentlyActive]);
+      console.log("Datos codificados para changeUserStatus:", data);
+
+      // Enviar la transacción usando Biconomy con Paymaster
+      await sendTransactionWithBiconomy(contractAddress, data);
+      console.log(`Usuario ${isCurrentlyActive ? "deshabilitado" : "habilitado"}: ${smartAccountAddress}`);
+
+      // Actualizar la whitelist
+      await fetchAdminAndWhitelist(contract, userAccount);
+
+      hideLoading();
+      setIsTransactionPending(false);
+    } catch (error) {
+      console.error(`Error al ${isCurrentlyActive ? "deshabilitar" : "habilitar"} usuario:`, error);
+      hideLoading();
+      setIsTransactionPending(false);
+      let errorMessage = `Ocurrió un error al ${isCurrentlyActive ? "deshabilitar" : "habilitar"} el usuario.`;
       if (error.data && error.data.message) {
         errorMessage = error.data.message;
       } else if (error.reason) {
@@ -620,7 +602,7 @@ export default function AdminPanel() {
                     <label className="titleLabel labelW">EOA</label>
                     <label className="titleLabel labelW">Smart Account</label>
                     <label className="titleLabel labelW">Nombre</label>
-                    <label className="titleLabel labelW">Rol</label> {/* Nueva etiqueta para Rol */}
+                    <label className="titleLabel labelW">Rol</label>
                     <br></br>
                     <input
                       className="inputText"
@@ -680,6 +662,7 @@ export default function AdminPanel() {
                         <th align="center">Smart Account</th>
                         <th align="center">Nombre</th>
                         <th align="center">Rol</th>
+                        <th align="center">Estado</th>
                         <th align="center">Acciones</th>
                       </tr>
                     </thead>
@@ -691,6 +674,7 @@ export default function AdminPanel() {
                             <td align="center">{user.smartAccount}</td>
                             <td align="center">{user.name}</td>
                             <td align="center">{user.isAdmin ? "Administrador" : "Usuario"}</td>
+                            <td align="center">{user.isActive ? "Activo" : "Inactivo"}</td>
                             <td align="center">
                               {/* Mostrar botones solo si el usuario conectado es un administrador y no está gestionando su propia cuenta */}
                               {isAdmin && user.smartAccount !== userAccount && (
@@ -705,18 +689,22 @@ export default function AdminPanel() {
                                     {user.isAdmin ? (
                                       <img src="../images/icon_remove_admin.svg" alt="Revocar rol de administrador" />
                                     ) : (
-                                      <img src="../images/icon_up_admin.svg" alt="Conceder rol de administrador" /> // Corregido el icono para añadir admin
+                                      <img src="../images/icon_up_admin.svg" alt="Conceder rol de administrador" />
                                     )}
                                   </button>
 
-                                  {/* Botón para Eliminar Usuario */}
+                                  {/* Botón para habilitar/deshabilitar Usuario */}
                                   <button
                                     className="iconAction"
-                                    onClick={() => removeUserFromWhitelist(user.smartAccount)}
                                     style={{ marginLeft: "10px" }}
+                                    onClick={() => toggleUserStatus(user.smartAccount, user.isActive)}
                                     disabled={isTransactionPending}
                                   >
-                                    <img src="../images/icon_delete.svg" alt="Eliminar" />
+                                    {user.isActive ? (
+                                      <img src="../images/icon_disable.svg" alt="Deshabilitar Usuario" />
+                                    ) : (
+                                      <img src="../images/icon_enable.svg" alt="Habilitar Usuario" />
+                                    )}
                                   </button>
                                 </>
                               )}
@@ -725,7 +713,7 @@ export default function AdminPanel() {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="5" align="center">
+                          <td colSpan="6" align="center">
                             No hay usuarios en la whitelist.
                           </td>
                         </tr>
@@ -779,8 +767,6 @@ export default function AdminPanel() {
               )}
             </>
           )}
-
-         
         </div>
       </div>
 
