@@ -79,7 +79,6 @@ export default function SendDocumento() {
     };
   }, []);
 
-
   const handleCloseWindow = () => {
     window.close();
   };
@@ -221,6 +220,11 @@ export default function SendDocumento() {
     console.log("El estado isWhitelisted cambió a:", isWhitelisted);
   }, [isWhitelisted]);
 
+  // Monitorear cambios en status para logging
+  useEffect(() => {
+    console.log("El estado status ha cambiado a:", status);
+  }, [status]);
+
   // Manejar cambios en la cuenta o en la red
   useEffect(() => {
     if (window.ethereum) {
@@ -278,6 +282,7 @@ export default function SendDocumento() {
     try {
       setIsTransactionPending(true);
       setStatus('signing');
+      console.log("Estado status después de setStatus('signing'):", status);
       setDocumentHash(null); // Resetear docHash al iniciar nueva transacción
       showLoading("Firmando la transacción...");
 
@@ -405,10 +410,6 @@ export default function SendDocumento() {
                   )}
                 </div>
                 {/* Botones de acción */}
-                {console.log("Valores para renderizado del mensaje:")}
-                {console.log("userEOA:", userEOA)}
-                {console.log("dataJson:", dataJson)}
-                {console.log("isWhitelisted:", isWhitelisted)}
                 {userEOA && dataJson && isWhitelisted && status === 'notSigned' && (
                   <>
                     <button
@@ -434,6 +435,13 @@ export default function SendDocumento() {
                 )}
                 {status === 'error' && (
                   <p style={{ color: 'red' }}>Ocurrió un error. Inténtalo de nuevo.</p>
+                )}
+
+                {/* Aviso para no cerrar la ventana durante la transacción */}
+                {status === 'signing' && (
+                  <p style={{ color: 'red', textAlign: 'center' }}>
+                    Por favor, no cierre la ventana mientras se procesa la transacción.
+                  </p>
                 )}
               </div>
             }
