@@ -7,7 +7,7 @@
     <title>Enviar Datos con postMessage</title>
     <script>
         function openLinkWithPostMessage() {
-          const url = 'http://localhost:5173/'; // URL de tu aplicación React
+          const url = 'http://localhost:5173/sendocumento'; // URL de tu aplicación React
           const postData = {
             data: '{"key1":"valor1","key2":"valor2","key3":"valor3","key10":"valor10","key20":"valor20","key30":"valor30","key11":"valor11","key21":"valor21","key31":"valor31"}',
             id: 'sdfsdasafsgscwdfe'
@@ -23,7 +23,7 @@
               console.warn('La ventana ha sido cerrada antes de enviar el mensaje.');
             } else if (newWindow && newWindow.postMessage) {
               console.log('Enviando datos a la nueva ventana:', postData);
-              newWindow.postMessage(postData, 'http://localhost:5173');
+              newWindow.postMessage(postData, 'http://localhost:5173/sendocumento');
               clearInterval(interval);
             }
           }, 500); // Verificar cada 500ms
