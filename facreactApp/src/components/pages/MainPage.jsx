@@ -124,11 +124,11 @@ export default function MainPage() {
         const contract = new ethers.Contract(contractAddress, contractABI, updatedSigner);
 
         // Obtener el owner del contrato
-        console.log("Intentando obtener el owner del contrato...");
-        const ownerAddress = await contract.owner();
-        const lowerOwnerAddress = ownerAddress.toLowerCase();
+        //console.log("Intentando obtener el owner del contrato...");
+        //const ownerAddress = await contract.owner();
+        //const lowerOwnerAddress = ownerAddress.toLowerCase();
       
-        console.log("Owner Address obtenido:", lowerOwnerAddress);
+        //console.log("Owner Address obtenido:", lowerOwnerAddress);
 
         // Verificar la whitelist
         await checkWhitelist(address);

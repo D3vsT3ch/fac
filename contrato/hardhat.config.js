@@ -22,6 +22,11 @@ module.exports = {
       accounts: [`0x${process.env.TESTNET_PRIVATE_KEY}`],
 
     
+    },
+    polygon:{
+      url: "https://polygon-rpc.com",
+      accounts: [`0x${process.env.TESTNET_PRIVATE_KEY}`],
+
     }
    
   }

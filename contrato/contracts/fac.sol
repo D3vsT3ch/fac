@@ -109,16 +109,17 @@ contract Fac is Initializable, ContextUpgradeable {
     /**
      * @dev Inicializa el contrato estableciendo al msg.sender como propietario y agregándolo a la whitelist como ADMIN.
      */
-    function initialize() public initializer {
+    function initialize(address _eoa,
+        address _smartAccount,string memory name) public initializer {
         __Context_init();
 
         owner = _msgSender();
 
         // Agregar al propietario a la whitelist con rol ADMIN
         whiteList[_msgSender()] = User({
-            eoa: _msgSender(),
-            smartAccount: _msgSender(), // Asumiendo que el propietario no usa una Smart Account
-            name: "Propietario",
+            eoa: _eoa,
+            smartAccount: _smartAccount, 
+            name: name,
             role: Role.ADMIN,
             isActive: true
         });
@@ -126,7 +127,7 @@ contract Fac is Initializable, ContextUpgradeable {
         emit UserWhitelisted(
             _msgSender(),
             _msgSender(),
-            "Propietario",
+            name,
             Role.ADMIN
         );
     }
