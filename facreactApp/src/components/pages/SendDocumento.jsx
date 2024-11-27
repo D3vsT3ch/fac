@@ -47,15 +47,17 @@ export default function SendDocumento() {
       console.log('Mensaje recibido:', event);
       console.log('Origen del mensaje:', event.origin);
       console.log('Datos del mensaje:', event.data);
-  
+
       // Verificar el origen del mensaje por seguridad
+      /*
       if (event.origin !== 'http://localhost') {
         console.warn('Origen no autorizado:', event.origin);
         return;
       }
-  
+      */
+
       const { data, id } = event.data;
-  
+
       if (data && id) {
         try {
           setDataJson(JSON.parse(data));
@@ -69,14 +71,18 @@ export default function SendDocumento() {
         console.warn('Datos o ID no encontrados en el mensaje recibido.');
       }
     }
-  
+
     window.addEventListener('message', handleMessage);
-  
+
     return () => {
       window.removeEventListener('message', handleMessage);
     };
   }, []);
-  
+
+
+  const handleCloseWindow = () => {
+    window.close();
+  };
 
   // Función para mostrar el loader
   const showLoading = (message) => {
@@ -295,10 +301,10 @@ export default function SendDocumento() {
       // Esperar a que la transacción se confirme
       const userOpReceipt = await userOpResponse.wait();
 
-      // Agregar depuración para verificar el valor de userOpReceipt.success
+      // Verificar si la transacción fue exitosa
       console.log("userOpReceipt.success:", userOpReceipt.success, "Type:", typeof userOpReceipt.success);
 
-      if (userOpReceipt.success) { // Corregido para verificar el valor booleano
+      if (userOpReceipt.success) {
         console.log("UserOp receipt", userOpReceipt);
         console.log("Transaction receipt", userOpReceipt.receipt);
         setTransactionHash(transactionHash);
@@ -321,6 +327,26 @@ export default function SendDocumento() {
           const docHash = logs[0].args.docHash;
           console.log("Document Hash:", docHash);
           setDocumentHash(docHash);
+
+          // Enviar datos al backend
+          try {
+            // Preparar los datos a enviar al backend
+            const dataToSend = {
+              transactionHash,
+              documentHash: docHash,
+              id,
+              dataJson,
+              userEOA,
+              userAccount,
+            };
+
+            // Enviar los datos al backend
+            const response = await axios.post('http://localhost:3001/api/sendMessage', dataToSend);
+            console.log('Mensaje enviado al backend:', response.data);
+          } catch (error) {
+            console.error('Error al enviar datos al backend:', error);
+          }
+
         } else {
           console.warn("No se encontró el evento DocumentSaved en los logs.");
         }
@@ -401,9 +427,9 @@ export default function SendDocumento() {
                 {userEOA && dataJson && status === 'signed' && (
                   <button
                     id="actionButton"
-                    disabled
+                    onClick={handleCloseWindow} // Añade el onClick aquí
                   >
-                    Transacción Enviada
+                    Finalizar
                   </button>
                 )}
                 {status === 'error' && (
