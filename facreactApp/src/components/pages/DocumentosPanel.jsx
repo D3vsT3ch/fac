@@ -181,7 +181,7 @@ export default function DocumentosPanel() {
             // Llamar a la función getAllDocuments del contrato
             console.log("Llamando a getAllDocuments...");
             const [documentHashes, timestamps, datas, uploaders, eoaList, keys] = await contractInstance.getAllDocuments(); // Añadido eoaList
-            console.log("Datos obtenidos de getAllDocuments:", { documentHashes, timestamps, datas, uploaders, eoaList, keys  });
+            console.log("Datos obtenidos de getAllDocuments:", { documentHashes, timestamps, datas, uploaders, eoaList, keys });
 
             // Mapear los datos a un formato más manejable
             const docs = documentHashes.map((hash, index) => {
@@ -223,7 +223,7 @@ export default function DocumentosPanel() {
             showLoading("Obteniendo detalles del documento...");
 
 
-            
+
             const [timestamp, data, uploader, eoa, key] = await contract.getDocument(docHash); // Añadido eoa
             const ts = ethers.BigNumber.isBigNumber(timestamp) ? timestamp.toNumber() : timestamp;
             const docDetails = {
@@ -405,14 +405,14 @@ export default function DocumentosPanel() {
 
                         {/* Mostrar el panel de documentos solo si el usuario está en la whitelist */}
                         {isWhitelisted && (
-                            <div className="flexH gap30" style={{ marginLeft: "30px", height: "100%" }}>
+                            <div className="flexH gap30" style={{ marginLeft: "40px", marginRight: "40px", height: "100%" }}>
                                 <div className="flex1">
-                                    <label htmlFor="documentsTable" className="titleLabel labelW" style={{ textAlign: "left", marginLeft: "-60px" }}>
-                                        Título Principal
-                                    </label>
+                                    <div className="centerText margin33">
+                                        <div className="titleLabel">Documentos</div>
+                                    </div>
                                     <br />
                                     <div className="containerScroll">
-                                        <table id="documentsTable" cellSpacing="0">
+                                        <table id="userTable" cellSpacing="0">
                                             <thead>
                                                 <tr>
                                                     <th>Hash del Documento</th>
@@ -476,15 +476,15 @@ export default function DocumentosPanel() {
                                                         <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', backgroundColor: '#f5f5f5', padding: '10px', borderRadius: '5px' }}>
                                                             {isValidJson(selectedDocument.key)
                                                                 ? JSON.stringify(JSON.parse(selectedDocument.key), null, 2)
-                                                                : "key: "+selectedDocument.key}
+                                                                : "key: " + selectedDocument.key}
                                                         </pre>
                                                         <pre style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', backgroundColor: '#f5f5f5', padding: '10px', borderRadius: '5px' }}>
                                                             {isValidJson(selectedDocument.data)
                                                                 ? JSON.stringify(JSON.parse(selectedDocument.data), null, 2)
                                                                 : selectedDocument.data}
                                                         </pre>
-                                                        
-                                                        
+
+
                                                     </div>
                                                 </div>
                                             ) : (

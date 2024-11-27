@@ -650,7 +650,7 @@ export default function AdminPanel() {
               </div>
 
               {/* Tabla de Usuarios */}
-              <div className="flexH gap30 margin46 containerTable">
+              <div className="flexH gap30 margintable containerTable">
                 <div className="flex1">
                   <div className="centerText margin33">
                     <div className="titleLabel">Usuarios</div>
@@ -670,12 +670,12 @@ export default function AdminPanel() {
                       {whitelistedUsers.length > 0 ? (
                         whitelistedUsers.map((user) => (
                           <tr key={user.smartAccount}>
-                            <td align="center">{user.eoa}</td>
-                            <td align="center">{user.smartAccount}</td>
-                            <td align="center">{user.name}</td>
-                            <td align="center">{user.isAdmin ? "Administrador" : "Usuario"}</td>
-                            <td align="center">{user.isActive ? "Activo" : "Inactivo"}</td>
-                            <td align="center">
+                            <td style={{ wordWrap: 'break-word', maxWidth: '150px' }} align="center">{user.eoa}</td>
+                            <td style={{ wordWrap: 'break-word', maxWidth: '150px' }} align="center">{user.smartAccount}</td>
+                            <td style={{ wordWrap: 'break-word', maxWidth: '150px' }} align="center">{user.name}</td>
+                            <td style={{ wordWrap: 'break-word', maxWidth: '80px' }} align="center"><p className="tag">{user.isAdmin ? "Administrador" : "Usuario"}</p></td>
+                            <td style={{ wordWrap: 'break-word', maxWidth: '50px',  color: user.isActive ? '#33C44D' : '#C43333', }} align="center">{user.isActive ? "Activo" : "Inactivo"}</td>
+                            <td style={{ wordWrap: 'break-word', maxWidth: '50px' }} align="center">
                               {/* Mostrar botones solo si el usuario conectado es un administrador y no está gestionando su propia cuenta */}
                               {isAdmin && user.smartAccount !== userAccount && (
                                 <>
@@ -701,9 +701,9 @@ export default function AdminPanel() {
                                     disabled={isTransactionPending}
                                   >
                                     {user.isActive ? (
-                                      <img src="../images/icon_disable.svg" alt="Deshabilitar Usuario" />
+                                      <img src="../images/icon_habilitar.svg" alt="Deshabilitar Usuario" />
                                     ) : (
-                                      <img src="../images/icon_enable.svg" alt="Habilitar Usuario" />
+                                      <img src="../images/icon_desabilitar.svg" alt="Habilitar Usuario" />
                                     )}
                                   </button>
                                 </>

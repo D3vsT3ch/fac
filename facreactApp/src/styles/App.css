@@ -263,6 +263,7 @@ body {
   border-bottom-right-radius: 10px;
 }
 
+
 #userTable tr:nth-child(odd) {
   background-color: transparent;
 }
@@ -395,13 +396,13 @@ button:disabled {
 }
 
 .tag {
-  width: auto;
-  height: auto;
+  width: 120px;
+  height: 20px;
   padding: 10px;
   color: white;
   border-radius: 30px;
   background-color: #001326;
-  float: left;
+  float: center;
 }
 
 .adminUser{
@@ -505,7 +506,7 @@ button:disabled {
 #userTable td {
   color: white;
   word-break: break-all;
-  text-align: center;
+ 
 }
 
 
@@ -548,4 +549,14 @@ button:disabled {
   width: 200px;
   height: 50px;
   font-size: 20px;
+}
+
+button:disabled {
+  background-color: transparent;
+  cursor: not-allowed;
+}
+
+.margintable {
+  margin-left: 20%;
+  margin-right: 20%;
 }
