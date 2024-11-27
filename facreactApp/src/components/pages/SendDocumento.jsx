@@ -353,7 +353,8 @@ export default function SendDocumento() {
             };
 
             // Enviar los datos al backend
-            const response = await axios.post(import.meta.env.VITE_URL_RABBITMQ, dataToSend);
+            const response = await axios.post('/api/sendMessage', dataToSend);
+
             console.log('Mensaje enviado al backend:', response.data);
           } catch (error) {
             console.error('Error al enviar datos al backend:', error);

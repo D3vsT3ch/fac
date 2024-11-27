@@ -11,6 +11,11 @@ export default defineConfig({
       protocolImports: true, // Permite importar módulos con el protocolo `node:`
     }),
   ],
+  server: {
+    proxy: {
+      '/api': 'http://localhost:3001',
+    },
+  },
   resolve: {
     alias: {
       buffer: 'buffer', // Alias para `buffer`
