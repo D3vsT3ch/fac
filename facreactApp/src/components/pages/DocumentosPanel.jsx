@@ -11,7 +11,6 @@ import { requiredChainId, networkConfig } from "../../config";
 import { initializeBiconomy } from "../../biconomy";
 
 export default function DocumentosPanel() {
-
     const [userAccount, setUserAccount] = useState(null); // Dirección de Smart Account
     const [userEOA, setUserEOA] = useState(null); // Dirección EOA
     const [loading, setLoading] = useState(false);
@@ -117,7 +116,7 @@ export default function DocumentosPanel() {
                 console.log("Owner Address obtenido:", lowerOwnerAddress);
 
                 // Verificar si el usuario es admin
-                const adminStatus = await contractInstance.isAdmin(address.toLowerCase()); // Corregido aquí
+                const adminStatus = await contractInstance.isAdmin(address.toLowerCase());
                 setIsAdmin(adminStatus);
                 console.log("¿Es admin?:", adminStatus);
 
@@ -180,20 +179,19 @@ export default function DocumentosPanel() {
 
             // Llamar a la función getAllDocuments del contrato
             console.log("Llamando a getAllDocuments...");
-            const [documentHashes, timestamps, datas, uploaders, eoaList, keys] = await contractInstance.getAllDocuments(); // Añadido eoaList
+            const [documentHashes, timestamps, datas, uploaders, eoaList, keys] = await contractInstance.getAllDocuments();
             console.log("Datos obtenidos de getAllDocuments:", { documentHashes, timestamps, datas, uploaders, eoaList, keys });
 
             // Mapear los datos a un formato más manejable
             const docs = documentHashes.map((hash, index) => {
                 const timestamp = timestamps[index];
-                // Verifica si timestamp es un BigNumber
                 const ts = ethers.BigNumber.isBigNumber(timestamp) ? timestamp.toNumber() : timestamp;
                 const doc = {
                     hash,
                     timestamp: new Date(ts * 1000).toLocaleString(),
                     data: datas[index],
                     uploader: uploaders[index],
-                    eoa: eoaList[index], // Añadido eoa
+                    eoa: eoaList[index],
                     key: keys[index],
                 };
                 console.log(`Documento ${index}:`, doc);
@@ -210,7 +208,6 @@ export default function DocumentosPanel() {
         }
     }, [showLoading, hideLoading]);
 
-    //async (contract, userAccountAddress, retries = 3, delayTime = 2000) => {
     // Función para manejar la visualización de un documento
     const handleViewDocument = useCallback(async (docHash) => {
         if (!contract) {
@@ -222,18 +219,15 @@ export default function DocumentosPanel() {
         try {
             showLoading("Obteniendo detalles del documento...");
 
-
-
-            const [timestamp, data, uploader, eoa, key] = await contract.getDocument(docHash); // Añadido eoa
+            const [timestamp, data, uploader, eoa, key] = await contract.getDocument(docHash);
             const ts = ethers.BigNumber.isBigNumber(timestamp) ? timestamp.toNumber() : timestamp;
             const docDetails = {
                 hash: docHash,
                 timestamp: new Date(ts * 1000).toLocaleString(),
                 data,
                 uploader,
-                eoa, // Añadido eoa
+                eoa,
                 key,
-
             };
 
             setSelectedDocument(docDetails);
@@ -259,7 +253,7 @@ export default function DocumentosPanel() {
 
         try {
             showLoading("Buscando documento...");
-            const [timestamp, data, uploader, eoa] = await contract.getDocument(searchHash);
+            const [timestamp, data, uploader, eoa, key] = await contract.getDocument(searchHash);
             const ts = ethers.BigNumber.isBigNumber(timestamp) ? timestamp.toNumber() : timestamp;
             const docDetails = {
                 hash: searchHash,
@@ -267,6 +261,7 @@ export default function DocumentosPanel() {
                 data,
                 uploader,
                 eoa,
+                key,
             };
 
             setSelectedDocument(docDetails);
@@ -296,6 +291,26 @@ export default function DocumentosPanel() {
             fetchDocuments(contract, provider);
         }
     }, [contract, provider, isWhitelisted, fetchDocuments]);
+
+    // useEffect para escuchar el evento DocumentSaved
+    useEffect(() => {
+        if (contract && provider) {
+            const handleDocumentSaved = async (docHash, uploader, eoa, timestamp, key) => {
+                console.log('Evento DocumentSaved recibido:', { docHash, uploader, eoa, timestamp, key });
+
+                // Actualizar la lista de documentos
+                await fetchDocuments(contract, provider);
+            };
+
+            // Configurar el listener
+            contract.on('DocumentSaved', handleDocumentSaved);
+
+            // Limpieza
+            return () => {
+                contract.off('DocumentSaved', handleDocumentSaved);
+            };
+        }
+    }, [contract, provider, fetchDocuments]);
 
     // Manejar cambios en la cuenta o en la red
     useEffect(() => {
@@ -390,8 +405,6 @@ export default function DocumentosPanel() {
                             </button>
                         </div>
 
-                        {/* Eliminado el campo de búsqueda */}
-
                         <div className="space50"></div>
 
                         {/* Verificar si el usuario está en la whitelist */}
@@ -417,7 +430,7 @@ export default function DocumentosPanel() {
                                                 <tr>
                                                     <th>Hash del Documento</th>
                                                     <th>Uploader</th>
-                                                    <th>key</th>
+                                                    <th>Key</th>
                                                     <th>Fecha de Subida</th>
                                                     <th>Acciones</th>
                                                 </tr>
@@ -434,13 +447,12 @@ export default function DocumentosPanel() {
                                                                 <button className="iconAction" onClick={() => handleViewDocument(doc.hash)}>
                                                                     <img src="../images/icon_eye.svg" alt="ver" />
                                                                 </button>
-                                                                {/* Puedes agregar más acciones aquí */}
                                                             </td>
                                                         </tr>
                                                     ))
                                                 ) : (
                                                     <tr>
-                                                        <td colSpan="4">No hay documentos disponibles.</td>
+                                                        <td colSpan="5">No hay documentos disponibles.</td>
                                                     </tr>
                                                 )}
                                             </tbody>
@@ -483,8 +495,6 @@ export default function DocumentosPanel() {
                                                                 ? JSON.stringify(JSON.parse(selectedDocument.data), null, 2)
                                                                 : selectedDocument.data}
                                                         </pre>
-
-
                                                     </div>
                                                 </div>
                                             ) : (
@@ -504,7 +514,6 @@ export default function DocumentosPanel() {
             {loading && <Loader message="Cargando..." />}
         </div>
     );
-
 }
 
 // Función para codificar la llamada a la función del contrato

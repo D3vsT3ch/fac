@@ -735,7 +735,7 @@ export default function AdminPanel() {
                       console.error("Error al refrescar la lista:", error);
                     }
                   }}
-                  disabled={isTransactionPending}
+                 
                 >
                   Refrescar lista
                 </button>
