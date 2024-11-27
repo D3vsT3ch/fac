@@ -1,5 +1,3 @@
-<!-- index.html -->
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -7,29 +5,36 @@
     <title>Enviar Datos con postMessage</title>
     <script>
         function openLinkWithPostMessage() {
-          const url = 'http://localhost:5173/sendocumento'; // URL de tu aplicación React
-          const postData = {
-            data: '{"key1":"valor1","key2":"valor2","key3":"valor3","key10":"valor10","key20":"valor20","key30":"valor30","key11":"valor11","key21":"valor21","key31":"valor31"}',
-            id: 'sdfsdasafsgscwdfe'
-          };
-      
-          // Abrir una nueva ventana con la aplicación React
-          const newWindow = window.open(url, '_blank');
-      
-          // Usar un intervalo para verificar cuándo la nueva ventana está lista
-          const interval = setInterval(function() {
-            if (newWindow && newWindow.closed) {
-              clearInterval(interval);
-              console.warn('La ventana ha sido cerrada antes de enviar el mensaje.');
-            } else if (newWindow && newWindow.postMessage) {
-              console.log('Enviando datos a la nueva ventana:', postData);
-              newWindow.postMessage(postData, 'http://localhost:5173/sendocumento');
-              clearInterval(interval);
+            const url = 'http://localhost:5173/sendocumento'; // URL de tu aplicación React
+            const postData = {
+                data: '{"key1":"valor1","key2":"valor2","key3":"valor3","key10":"valor10","key20":"valor20","key30":"valor30","key11":"valor11","key21":"valor21","key31":"valor31"}',
+                id: 'sdfsdasafsgscwdfe'
+            };
+        
+            // Abrir una nueva ventana con la aplicación React
+            const newWindow = window.open(url, '_blank');
+
+            // Escuchar mensajes desde la ventana hija
+            function receiveMessage(event) {
+                // Verificar el origen del mensaje por seguridad
+                if (event.origin !== 'http://localhost:5173') {
+                    console.warn('Origen no autorizado:', event.origin);
+                    return;
+                }
+
+                if (event.data && event.data.type === 'ready') {
+                  
+
+                    newWindow.postMessage(postData, 'http://localhost:5173');
+
+                 
+                    window.removeEventListener('message', receiveMessage);
+                }
             }
-          }, 500); // Verificar cada 500ms
+
+            window.addEventListener('message', receiveMessage);
         }
-      </script>
-      
+    </script>
 </head>
 <body>
     <h1>Enviar Datos con postMessage</h1>

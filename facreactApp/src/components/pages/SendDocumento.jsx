@@ -1,6 +1,6 @@
 // src/components/pages/SendDocumento.jsx
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useLayoutEffect, useCallback } from "react";
 import { Routes, Route } from "react-router-dom";
 import { ethers } from "ethers";
 import UserInfo from "../UserInfo";
@@ -42,7 +42,7 @@ export default function SendDocumento() {
   };
 
   // Configurar el listener para recibir mensajes vía postMessage
-  useEffect(() => {
+  useLayoutEffect(() => {
     function handleMessage(event) {
       console.log('Mensaje recibido:', event);
       console.log('Origen del mensaje:', event.origin);
@@ -73,6 +73,13 @@ export default function SendDocumento() {
     }
 
     window.addEventListener('message', handleMessage);
+
+    // Enviar mensaje de "ready" al padre
+    if (window.opener) {
+      window.opener.postMessage({ type: 'ready' }, '*');
+    } else if (window.parent !== window) {
+      window.parent.postMessage({ type: 'ready' }, '*');
+    }
 
     return () => {
       window.removeEventListener('message', handleMessage);
@@ -208,25 +215,25 @@ export default function SendDocumento() {
   }, [signer]);
 
   // Monitorear cambios en signer y userAccount para verificar whitelist
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (signer && userAccount) {
-      console.log("Llamando a checkWhitelist desde useEffect");
+      console.log("Llamando a checkWhitelist desde useLayoutEffect");
       checkWhitelist(userAccount);
     }
   }, [signer, userAccount, checkWhitelist]);
 
   // Monitorear cambios en isWhitelisted para logging
-  useEffect(() => {
+  useLayoutEffect(() => {
     console.log("El estado isWhitelisted cambió a:", isWhitelisted);
   }, [isWhitelisted]);
 
   // Monitorear cambios en status para logging
-  useEffect(() => {
+  useLayoutEffect(() => {
     console.log("El estado status ha cambiado a:", status);
   }, [status]);
 
   // Manejar cambios en la cuenta o en la red
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (window.ethereum) {
       const handleAccountsChanged = (accounts) => {
         if (accounts.length > 0) {
@@ -346,7 +353,7 @@ export default function SendDocumento() {
             };
 
             // Enviar los datos al backend
-            const response = await axios.post('http://localhost:3001/api/sendMessage', dataToSend);
+            const response = await axios.post(import.meta.env.VITE_URL_RABBITMQ, dataToSend);
             console.log('Mensaje enviado al backend:', response.data);
           } catch (error) {
             console.error('Error al enviar datos al backend:', error);
