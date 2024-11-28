@@ -2,7 +2,7 @@ const { ethers } = require('hardhat');
 
 async function main() {
   // Dirección del contrato desplegado
-  const facAddress = '0x5F12172a05DdF67bf6A16069Ee7C533B769A129d'; // Reemplaza con la dirección real
+  const facAddress = '0xa1EED54087efF4CdDcFc08c780b19A0364805E8b'; // Reemplaza con la dirección real
 
   // Obtener la instancia del contrato
   const Fac = await ethers.getContractFactory('Fac');
@@ -12,9 +12,9 @@ async function main() {
   const [owner] = await ethers.getSigners();
 
   // Datos del usuario a agregar a la whitelist
-  const userEOA = '0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266'; // Dirección EOA del usuario
-  const userSmartAccount = '0x0788816536DEFa6A14779711c0B08b7f0edFe68b'; // Dirección de la Smart Account asociada (puede ser la misma EOA o diferente)
-  const userName = 'Julio Leon'; // Nombre del usuario
+  const userEOA = '0xd21f79b18438c6e850bd3a2ef50e35c1765e046b'; // Dirección EOA del usuario
+  const userSmartAccount = '0x41b5ac6797a3fc9bd3ec305714e45b1419a9bed2'; // Dirección de la Smart Account asociada (puede ser la misma EOA o diferente)
+  const userName = 'Propietario'; // Nombre del usuario
 
   // Definir el rol del usuario
   // 0 para USER, 1 para ADMIN
