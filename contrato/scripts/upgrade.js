@@ -6,7 +6,7 @@ async function main () {
 
   try {
     // Intenta actualizar el contrato proxy en la dirección proporcionada
-    await upgrades.upgradeProxy('0xa1EED54087efF4CdDcFc08c780b19A0364805E8b', FacV2);
+    await upgrades.upgradeProxy('0x22d1a56aF6136A20e8c9Ab420e4557ac1C8473A2', FacV2);
     console.log('Fac upgraded successfully');
   } catch (error) {
     console.error('Error during upgrade:', error);
