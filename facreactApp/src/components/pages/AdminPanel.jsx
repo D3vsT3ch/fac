@@ -11,7 +11,6 @@ import "../../styles/App.css";
 import { requiredChainId, networkConfig } from "../../config";
 import { initializeBiconomy } from "../../biconomy";
 import { PaymasterMode } from "@biconomy/account";
-import axios from "axios";
 
 export default function AdminPanel() {
   // Estados existentes
@@ -137,12 +136,12 @@ export default function AdminPanel() {
         // Re-obtener el proveedor y signer después de cambiar la red
         const updatedProvider = new ethers.providers.Web3Provider(window.ethereum);
         const updatedSigner = updatedProvider.getSigner();
+        setSigner(updatedSigner); // Establecer signer temprano para evitar condiciones de carrera
 
         // Inicializar Biconomy con el signer del usuario
         console.log("Inicializando Biconomy...");
         const sa = await initializeBiconomy(updatedSigner);
         setSmartAccount(sa);
-        setSigner(updatedSigner);
 
         // Obtener la dirección de la Smart Account correctamente
         console.log("Obteniendo dirección de la Smart Account...");
@@ -160,8 +159,7 @@ export default function AdminPanel() {
         setOwner(lowerOwnerAddress);
         console.log("Owner Address obtenido:", lowerOwnerAddress);
 
-        // Obtener la lista de administradores y la whitelist
-        await fetchAdminAndWhitelist(contract, address.toLowerCase());
+        // Nota: No llamar a fetchAdminAndWhitelist aquí; dejar que useEffect lo maneje
 
       } catch (error) {
         console.error("Error al conectar la wallet:", error);
@@ -192,10 +190,13 @@ export default function AdminPanel() {
   }, [signer]);
 
   // Función para obtener administradores y whitelist con reintentos
-  const fetchAdminAndWhitelist = async (contract, userAccountAddress, retries = 3, delayTime = 2000) => {
+  const fetchAdminAndWhitelist = useCallback(async (contract, userAccountAddress, retries = 3, delayTime = 2000) => {
     try {
       showLoading("Cargando administradores y lista blanca...");
       console.log("Obteniendo eventos UserWhitelisted, UserStatusChanged y RoleChanged...");
+
+      const currentBlock = await contract.provider.getBlockNumber();
+      const startBlock = currentBlock - 100000 > 0 ? currentBlock - 100000 : 0; // Limitar a últimos 100k bloques
 
       // Definir los filtros de eventos
       const filterUserWhitelisted = contract.filters.UserWhitelisted();
@@ -208,9 +209,9 @@ export default function AdminPanel() {
         eventsUserStatusChanged,
         eventsRoleChanged
       ] = await Promise.all([
-        contract.queryFilter(filterUserWhitelisted, 0, "latest"),
-        contract.queryFilter(filterUserStatusChanged, 0, "latest"),
-        contract.queryFilter(filterRoleChanged, 0, "latest"),
+        contract.queryFilter(filterUserWhitelisted, startBlock, currentBlock),
+        contract.queryFilter(filterUserStatusChanged, startBlock, currentBlock),
+        contract.queryFilter(filterRoleChanged, startBlock, currentBlock),
       ]);
 
       console.log("Eventos UserWhitelisted:", eventsUserWhitelisted);
@@ -290,15 +291,16 @@ export default function AdminPanel() {
         hideLoading();
       }
     }
-  };
+  }, [checkWhitelist, owner]);
 
   // Monitorear cambios en signer y userAccount para verificar whitelist
   useEffect(() => {
     if (signer && userAccount) {
-      console.log("Llamando a checkWhitelist desde useEffect");
-      checkWhitelist(userAccount);
+      console.log("Llamando a fetchAdminAndWhitelist desde useEffect");
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      fetchAdminAndWhitelist(contract, userAccount);
     }
-  }, [signer, userAccount, checkWhitelist]);
+  }, [signer, userAccount, fetchAdminAndWhitelist]);
 
   // Monitorear cambios en isWhitelisted para logging
   useEffect(() => {
@@ -315,6 +317,7 @@ export default function AdminPanel() {
           // Reconectar para actualizar estados y datos
           connectWallet();
         } else {
+          // Resetear estados
           setUserEOA(null);
           setUserAccount(null);
           setWhitelistedUsers([]);
@@ -331,7 +334,6 @@ export default function AdminPanel() {
       const handleChainChanged = (chainId) => {
         console.log("Chain cambiada a:", chainId);
         // Intentar cambiar automáticamente a la red deseada
-        // No recargar la página inmediatamente
         connectWallet();
       };
 
@@ -360,21 +362,27 @@ export default function AdminPanel() {
       // Puedes agregar más campos como value si es necesario
     };
 
-    const userOpResponse = await smartAccount.sendTransaction(tx, {
-      paymasterServiceData: { mode: PaymasterMode.SPONSORED },
-    });
-    const { transactionHash } = await userOpResponse.waitForTxHash();
-    console.log("Transaction Hash:", transactionHash);
+    try {
+      const userOpResponse = await smartAccount.sendTransaction(tx, {
+        paymasterServiceData: { mode: PaymasterMode.SPONSORED },
+      });
+      const { transactionHash } = await userOpResponse.waitForTxHash();
+      console.log("Transaction Hash:", transactionHash);
+      setTransactionHash(transactionHash);
 
-    // Esperar a que la transacción sea confirmada
-    const userOpReceipt = await userOpResponse.wait();
-    if (userOpReceipt.success !== true && userOpReceipt.success !== "true") {
-      throw new Error("La transacción no fue exitosa.");
+      // Esperar a que la transacción sea confirmada
+      const userOpReceipt = await userOpResponse.wait();
+      if (userOpReceipt.success !== true && userOpReceipt.success !== "true") {
+        throw new Error("La transacción no fue exitosa.");
+      }
+
+      console.log("UserOp receipt:", userOpReceipt);
+      console.log("Transaction receipt:", userOpReceipt.receipt);
+      return userOpReceipt.receipt;
+    } catch (error) {
+      console.error("Error en sendTransactionWithBiconomy:", error);
+      throw error;
     }
-
-    console.log("UserOp receipt:", userOpReceipt);
-    console.log("Transaction receipt:", userOpReceipt.receipt);
-    return userOpReceipt.receipt;
   };
 
   // Función para agregar un nuevo usuario a la whitelist usando Biconomy
@@ -432,6 +440,7 @@ export default function AdminPanel() {
 
       hideLoading();
       setStatus('signed');
+      setIsTransactionPending(false);
     } catch (error) {
       console.error("Error al agregar usuario a la whitelist:", error);
       hideLoading();
@@ -674,7 +683,7 @@ export default function AdminPanel() {
                             <td style={{ wordWrap: 'break-word', maxWidth: '150px' }} align="center">{user.smartAccount}</td>
                             <td style={{ wordWrap: 'break-word', maxWidth: '150px' }} align="center">{user.name}</td>
                             <td style={{ wordWrap: 'break-word', maxWidth: '80px' }} align="center"><p className="tag">{user.isAdmin ? "Administrador" : "Usuario"}</p></td>
-                            <td style={{ wordWrap: 'break-word', maxWidth: '50px',  color: user.isActive ? '#33C44D' : '#C43333', }} align="center">{user.isActive ? "Activo" : "Inactivo"}</td>
+                            <td style={{ wordWrap: 'break-word', maxWidth: '50px', color: user.isActive ? '#33C44D' : '#C43333' }} align="center">{user.isActive ? "Activo" : "Inactivo"}</td>
                             <td style={{ wordWrap: 'break-word', maxWidth: '50px' }} align="center">
                               {/* Mostrar botones solo si el usuario conectado es un administrador y no está gestionando su propia cuenta */}
                               {isAdmin && user.smartAccount !== userAccount && (
@@ -729,13 +738,17 @@ export default function AdminPanel() {
                   className="refresh-button"
                   onClick={async () => {
                     try {
-                      const contract = new ethers.Contract(contractAddress, contractABI, signer);
-                      await fetchAdminAndWhitelist(contract, userAccount);
+                      if (signer && userAccount) {
+                        const contract = new ethers.Contract(contractAddress, contractABI, signer);
+                        await fetchAdminAndWhitelist(contract, userAccount);
+                      } else {
+                        alert("Primero conecta tu wallet.");
+                      }
                     } catch (error) {
                       console.error("Error al refrescar la lista:", error);
                     }
                   }}
-                 
+                  disabled={isTransactionPending || loading}
                 >
                   Refrescar lista
                 </button>
@@ -747,7 +760,7 @@ export default function AdminPanel() {
                   <div className="centerText margin20">
                     <button
                       id="actionButton"
-                      onClick={sendTransactionWithSDK} // Usar el método del SDK con Paymaster
+                      onClick={() => sendTransactionWithBiconomy(contractAddress, encodeFunctionCall('firmarDocumento', [dataJson]))} // Asegúrate de definir la función 'firmarDocumento' en tu contrato
                       disabled={isTransactionPending}
                     >
                       Firmar Documento

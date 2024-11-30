@@ -38,15 +38,15 @@ requiredEnvVars.forEach((varName) => {
 export const networkConfig = {
   id: parseInt(VITE_CHAIN_ID, 10), // ID de la red
   chainIdHex: `0x${parseInt(VITE_CHAIN_ID, 10).toString(16)}`, // Convertir ID a hexadecimal
-  name: "Polygon Amoy Test Network",
-  network: "polygon-amoy",
+  name: VITE_CHAIN_NAME || "Polygon",
+  network: VITE_CHAIN_NAME ? VITE_CHAIN_NAME.toLowerCase() : "polygon",
   rpcUrls: [VITE_RPC_URL], // URL del nodo RPC
   nativeCurrency: {
     name: VITE_COIN_NAME, // Nombre de la moneda
     symbol: VITE_COIN_SYMBOL, // Símbolo de la moneda
     decimals: 18,
   },
-  blockExplorerUrls: [VITE_BLOCK_EXPLORER_URL], // **Corregido**
+  blockExplorerUrls: [VITE_BLOCK_EXPLORER_URL],
 };
 
 // Exporta `requiredChainId` basado en la configuración de la red
