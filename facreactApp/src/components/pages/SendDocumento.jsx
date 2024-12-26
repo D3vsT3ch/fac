@@ -232,6 +232,24 @@ export default function SendDocumento() {
     console.log("El estado status ha cambiado a:", status);
   }, [status]);
 
+  useLayoutEffect(() => {
+    const handleBeforeUnload = (event) => {
+      if (isTransactionPending) {
+        const message = "Se está enviando una transacción. Si cierras esta ventana ahora, se perderá.";
+        event.preventDefault();
+        event.returnValue = message; // Para navegadores compatibles
+        return message; // Para navegadores antiguos
+      }
+    };
+  
+    window.addEventListener("beforeunload", handleBeforeUnload);
+  
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isTransactionPending]);
+  
+
   // Manejar cambios en la cuenta o en la red
   useLayoutEffect(() => {
     if (window.ethereum) {
@@ -315,13 +333,12 @@ export default function SendDocumento() {
 
       // Verificar si la transacción fue exitosa
       console.log("userOpReceipt.success:", userOpReceipt.success, "Type:", typeof userOpReceipt.success);
-
       if (userOpReceipt.success) {
         console.log("UserOp receipt", userOpReceipt);
         console.log("Transaction receipt", userOpReceipt.receipt);
         setTransactionHash(transactionHash);
         setStatus('signed');
-        alert("Transacción enviada exitosamente.");
+     
 
         // Parsear los logs para encontrar el evento DocumentSaved y obtener el docHash
         const iface = new ethers.utils.Interface(contractABI);
@@ -359,13 +376,17 @@ export default function SendDocumento() {
           } catch (error) {
             console.error('Error al enviar datos al backend:', error);
           }
+          alert("Transacción enviada exitosamente.");
 
         } else {
           console.warn("No se encontró el evento DocumentSaved en los logs.");
         }
+      
 
       } else {
         throw new Error("La transacción falló.");
+        console.log("userOpReceipt.success:", userOpReceipt.success, "Type:", typeof userOpReceipt.success);
+
       }
 
     } catch (error) {
